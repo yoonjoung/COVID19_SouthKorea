@@ -248,7 +248,7 @@ plot_ly(dta, x=dta$date, y=dta$test,
 
 <p style="color:gray">
 More questions and data coming soon, as I continue digging the awesome KCDC website...    
-See [GitHub]() for more information.   
+See [GitHub](https://github.com/yoonjoung/COVID19_SouthKorea) for data, code, and more information.  
 For typos, errors, and questions: [contact me]("https://www.isquared.global/YJ")</p>
 
 _Making Data Delicious, One Byte at a Time_, in good times and bad times.
