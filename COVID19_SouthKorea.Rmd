@@ -34,12 +34,12 @@ First of all, everyone, __STAY HEALTHY and [see what YOU can do](https://www.cdc
 
 Second, there are many excellent articles, especially including [this one](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true), but I'm sharing some more questions (see left panel) and data for those who are curious about the situation in Korea specifically. All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
 
-By the way, to understand the Korean context, see below figure from [Washington Post](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html).  
+By the way, to understand the Korean context, see below figure from [Washington Post](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true).  
 
 ```{r plotworld, results="asis", fig.align="left", out.width = "600px"}
 knitr::include_graphics("WP_casetrends.png")
 ```
-(__Source__: Washington Post's [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html))
+(__Source__: Washington Post's [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true))
 
 #####__Q 1. When did it start?__ 
 
@@ -64,7 +64,7 @@ currentdate<- dtanewcasebyday %>%
     select(date) %>% summarize_all(funs(max))
     
 ```
-For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. About More recently, the number of new cases started to decrease (see below). __As of `r currentdate`, a total of `r total` people have been infected__. 
+For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. More recently, the number of new cases started to decrease (see below). For the first time since February 22, the number of new cases is below 100 for two days in a row! Still, as of `r currentdate`, a total of `r total` people have been infected. 
 
 ```{r plottrendkorea, results="asis", fig.align="left", out.width="600px"}
 dta<-dtanewcasebyday
@@ -175,9 +175,9 @@ totaldeaths<- dtabyage %>% filter(latest==TRUE) %>%
     select(deaths) %>% summarize_all(funs(sum))
 mortalityrate<-round(totaldeaths*100 / total, 1)
 ```
-Among those who have COVID, mortality rate among the elderly with COVID is very high: `r mortality80`% for those who are 80 or older, and `r mortality70`% for those who are between 70-79. 
+Among those who have COVID, __mortality rate among the elderly with COVID is very high: `r mortality80`% for those who are 80 or older, and `r mortality70`% for those who are between 70-79__. 
 
-Again, this is the case _under a very aggressive track-test-isolate strategy_, but with no nation wide lock down. As of `r latest`, a total of `r totaldeaths` people with COVID have died, `r mortalityrate`% among all COVID cases. These rates - overall as well as by age group - are lower than [mortality rates in China](https://www.who.int/docs/default-source/coronaviruse/who-china-joint-mission-on-covid-19-final-report.pdf). 
+Again, this is the case _under a very aggressive track-test-isolate strategy_, but with no nation wide lock down. As of `r latest`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. These rates - overall as well as by age group - are lower than [mortality rates in China](https://www.who.int/docs/default-source/coronaviruse/who-china-joint-mission-on-covid-19-final-report.pdf). 
 
 There are news articles about extremely over-burdened health systems especially in Daegu. I've read at least one mortality case on the newspaper while he/she was waiting for hospital admission, and patients from Daegu and a surrounding province being transferred to other less-affected provinces. However, my _impression_ (as a public health trained reader) is that most severe cases do receive treatment at hospitals. I'm looking for more systematic data on health systems' capacity and response.  
 ```{r plotmortality, results='asis', fig.align="left", out.width="600px"}
@@ -225,7 +225,7 @@ totalpop<-round(sum(dtapop$pop10)/1000)
 testrate<-round(max(dtabyday$total)/sum(dtapop$pop10))
 ```
 
-Very aggressive. As of `r latestdatetest`, a total of `r totaltest` thousand people have been tested. There are `r totalpop` million people in the country, and __`r testrate` in every 1000 people__ have been test. This is the highest testing rate in the world. Epidemiological investigation of the case No. 3 (who was confirmed on February 18th) prompted immediate and massive testing in Daegu and nation wide.  
+Very aggressive. As of `r latestdatetest`, a total of `r totaltest` thousand people have been tested. There are `r totalpop` million people in the country, and __`r testrate` in every 1000 people__ have been test. This is the [highest testing rate in the world](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html). Epidemiological investigation of the case No. 31 (who was confirmed on February 18th) prompted immediate and massive testing in Daegu and nation wide.  
 
 ```{r plottest, results="asis", fig.align="left", out.width="800px"}
 dta<-left_join(dtabyday, dtanewcasebyday, by = "date") 
@@ -249,6 +249,6 @@ plot_ly(dta, x=dta$date, y=dta$test,
 <p style="color:gray">
 More questions and data coming soon, as I continue digging the awesome KCDC website...    
 See [GitHub](https://github.com/yoonjoung/COVID19_SouthKorea) for data, code, and more information.  
-For typos, errors, and questions: [contact me]("https://www.isquared.global/YJ")</p>
+For typos, errors, and questions, contact me at [www.isquared.global]("https://www.isquared.global/YJ")</p>
 
 _Making Data Delicious, One Byte at a Time_, in good times and bad times.
