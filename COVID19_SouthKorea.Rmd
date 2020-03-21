@@ -193,7 +193,7 @@ length<-as.Date(date, format="%Y-%m-%d") - as.Date("2020-1-20", format="%Y-%m-%d
 
 South Korea had the first COVID death on February 19th. As of `r latestbyage`, there have been a total of `r totaldeaths`, with an overall mortality rate of `r mortalityrate`% among all cases. 
 
-The below graph shows trend of the overall mortality rate (starting from February 21st). The mortality rate initially increased for several days, but, as the number of new cases increased exponentially (see gray bars also Question 2), the mortality rate declined after the first peak. Then, it has increased gradually to the current level. Since South Korea still has been able to continue the trace-test-isolate strategy, it will be important to monitor mortality trends, providing important insight about this epidemic.  
+The below graph shows trend of the overall mortality rate (starting from February 21st). The mortality rate (orange bars) initially increased for several days, but, as the number of new cases increased exponentially (see gray bars also Question 2), the mortality rate declined after the first peak. Then, it has increased gradually to the current level. Since South Korea still has been able to continue the trace-test-isolate strategy, it will be important to monitor mortality trends, providing important insight about this epidemic.  
 
 ```{r,  fig.align="left", out.width="600px"}
 #{r plotcfrtrend, results='asis', fig.align="left", out.width="600px"}
@@ -218,8 +218,10 @@ dta<-dtabyday%>%select(date, mortality, incidence)
 dta$incidence<-dta$incidence/10
 
 plot_ly(dta, x=dta$date, y=dta$incidence, 
-        type = 'bar', name="Incidence (per million population)" ) %>%
-        add_trace(y = ~mortality, name = "Mortality (per 100 cases)" ) %>%
+        type = 'bar', name="Incidence (per million population)",
+        marker = list(color = "rgb(204,204,204)")) %>%
+        add_trace(y = ~mortality, name = "Mortality (per 100 cases)" ,
+                  marker = list(color = "rgb(253,141,60)")) %>%
         layout(
             title = "Trends of cumulative incidence and mortality by day",
             yaxis = list(title=""),  
