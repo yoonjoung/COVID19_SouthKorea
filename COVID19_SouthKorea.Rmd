@@ -24,78 +24,19 @@ suppressMessages(library(plotly))
 
 ```
 
-__COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
-
-(Updated: `r time`)  
-
-So, I have been watching the epidemic in China and Korea since the beginning, but it is still not easy to settle into this reality here in the US. 
-
-First of all, everyone, __STAY HEALTHY and [see what YOU can do](https://www.cdc.gov/coronavirus/2019-ncov/protect/index.html)__! 
-
-Second, there are many excellent articles, especially including [this one](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true), but I'm sharing some more questions (see left panel) and data for those who are curious about the situation in Korea specifically. All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
-
-By the way, to understand the Korean context, see below figure from [Washington Post](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true).  
-
-```{r plotworld, results="asis", fig.align="left", out.width = "600px"}
-knitr::include_graphics("WP_casetrends.png")
-```
-(__Source__: Washington Post's [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true))
-
-#####__Q 1. When did it start?__ 
-
-On January 20, 2020, there was the first laboratory confirmed COVID case. 
-
-#####__Q 2. How fast has it been spreading?__ 
-For this question, let's focus on __the number of new cases by day__. 
 ```{r dataByDay}
 dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByDay")
+str(dta)
 
     #table(dta$group)
     #table(dta$grouplabel)
 
 dtanewcasebyday<-dta %>%
+    filter(is.na(date)==F) %>%
     select(Date_PressRelease, date, newconfirmedcases) %>%
     mutate(date=as.Date(date))
-
-total<- dtanewcasebyday %>% 
-    select(newconfirmedcases) %>% summarize_all(funs(sum))
-
-currentdate<- dtanewcasebyday %>% 
-    select(date) %>% summarize_all(funs(max))
-    
 ```
-For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. More recently, the number of new cases started to decrease (see below). For the first time since February 22, the number of new cases is below 100 for two days in a row! Still, as of `r currentdate`, a total of `r total` people have been infected. 
 
-```{r plottrendkorea, results="asis", fig.align="left", out.width="600px"}
-dta<-dtanewcasebyday
-
-plot_ly(dta, x=dta$date, y=dta$newconfirmedcases, 
-        type = 'bar' ) %>%
-        layout(
-            title = "Trends of new confirmed COVID-19 cases per day",
-            xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=6), 
-                         tickangle=-90),
-            yaxis = list(title = "Number of new confirmed cases"))
-```
-(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r currentdate`)
-
-In Daegu, where about three quarters of the cases are concentrated, the daily number of new cases has decreased clearly. Thank God! 
-```{r plottrenddaegu, results="asis", fig.align="left", out.width = "600px"}
-knitr::include_graphics("KCDC_case_trends_daegu.png")
-```
-(__Source__: Figure from KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), _"Updates on COVID-19 in Korea (as of 15 March)"_)
-
-But, COVID can and does continue to spike up. In Seoul, there was a peak around the same time with the sharp epidemic in Daegu, followed by several days with much lower number of or no new cases. But, there seems to be a specific call-center related epidemic, as shown in the sudden increases in the number of new cases around March 11th.  
-
-```{r plottrendseoul, results="asis", fig.align="left", out.width = "600px"}
-knitr::include_graphics("KCDC_case_trends_seoul.png")
-```
-(__Source__: Figure from KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), _"Updates on COVID-19 in Korea (as of 14 March)"_)
-
-#####__Q 3. What age groups are affected?__ 
 ```{r dataByAgeSex}
 dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByAgeSex")
 
@@ -119,7 +60,7 @@ dtabyage<-dta %>%
 
     #table(dtabyage$age)
 
-dtapop<-read.csv("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.csv")
+dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear")
 dtapop<-dtapop %>%    
     filter(is.na(pop10)==F)  %>%
     mutate(
@@ -132,16 +73,340 @@ dtabyage<-left_join(dtabyage, dtapop, by = "age") %>%
         mortality=round(100*deaths/confirmedcases, 1),
         latest=date==max(date)
         ) 
-    
-latest<-max(dtabyage$date)
-    
 ```
 
-```{r}
-dta<-dtabyage%>%filter(latest==TRUE & age==20)
-incidence20<-max(dta$incidence)
+```{r dataSummaryByDay}
+#data for all trend data: testing, incidnece, mortality 
+dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear") %>%
+    filter(is.na(pop10)==F)  
+totalpop<-round(sum(dtapop$pop10)) #total population in thousand
+
+dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "SummaryByDay")
+    
+names(dta)<- tolower(names(dta))   
+str(dta)
+dtabyday<-dta %>%
+    filter(is.na(total)==F) %>%
+    mutate(
+        totalpop<-totalpop, 
+        date=as.Date(date), 
+        confirmed_discharged= ifelse(is.na(confirmed_discharged)==T, 0, confirmed_discharged),
+        confirmed_deceased= ifelse(is.na(confirmed_deceased)==T, 0, confirmed_deceased),
+        confirmed_isolated= ifelse(is.na(confirmed_isolated)==T, confirmed_total, confirmed_isolated),
+        confirmed_total= ifelse(is.na(confirmed_total)==T, confirmed_discharged + confirmed_isolated + confirmed_deceased , confirmed_total),
+        piu_total= ifelse(is.na(piu_total)==T, piu_beingtested+piu_testednegative, piu_total)
+        ) %>%
+    arrange(date) %>%
+    mutate(
+        test=lead(total)-total, #new tests in each day
+        testpositive=lead(confirmed_total)-confirmed_total, #new positive in each day
+        mortality=round(100*confirmed_deceased / confirmed_total, 1), #cumulative CFR (%)
+        incidence=round(100*confirmed_total/totalpop, 1) #cumulative incidence per 100,000 population 
+        )
 ```
-For this question, let's look at the total cumulative number of confirmed cases since the outbreak _per 100,000 population_ by age group, not the absolute number. Also, keep in your mind, this is what we see _under a very aggressive track-test-isolate strategy_ (see [this](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html) and [this](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true)). Finally, KCDC releases the number by 10-year age group, and I'm following that categorization.  
+
+```{r dataPediatricCases}
+dta<-as.data.frame(read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "PediatricCases"))
+
+names(dta) <- gsub(" ", "", names(dta))
+names(dta)<- tolower(names(dta))   
+str(dta)
+table(dta$agegroup)
+
+dtapediatric<-dta%>%
+    filter(agegroup!="") %>%
+    select(date_pressrelease, totalconfirmedcases, agegroup) %>%
+    mutate(
+        date=as.Date(date_pressrelease, "%m/%d/%y"), 
+        age=sapply(strsplit(agegroup,"-"), `[`, 1)  
+        ) %>%
+    arrange(date, agegroup)
+    #table(dtabyage$age)
+
+dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="SingleYear")
+str(dta)
+
+names(dta) <- gsub(" ", "", names(dta))
+names(dta)<- tolower(names(dta))   
+str(dta)
+
+dtapop<-dta %>%    
+    filter(is.na(age)==F)  %>%
+    filter(age<=18)  %>%
+    mutate(
+        pop=popmale_2020+popfemale_2020, 
+        agegroup="0-18", 
+            agegroup= ifelse(age>=0 & age<=2, "0-2", agegroup),        
+            agegroup= ifelse(age>=3 & age<=6, "3-6", agegroup),        
+            agegroup= ifelse(age>=7 & age<=12, "7-12", agegroup),        
+            agegroup= ifelse(age>=13 & age<=15, "13-15", agegroup),        
+            agegroup= ifelse(age>=16 & age<=18, "16-18", agegroup)   
+        )%>%
+    select(agegroup, pop) %>%
+    group_by(agegroup) %>%
+    summarize_all(funs(sum))
+
+str(dtapediatric)
+str(dtapop)
+
+dtapediatric<-left_join(dtapediatric, dtapop, by = "agegroup") %>%
+    mutate(
+        incidence=round(100*totalconfirmedcases/pop, 1),
+        #mortality=round(100*deaths/confirmedcases, 1),
+        latest=date==max(date)
+        ) 
+```
+
+__COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
+
+(Updated: `r time`)  
+
+So, I have been watching the epidemic in China and Korea since the beginning, but it is still not easy to settle into this reality here in the US. 
+
+First of all, everyone, __STAY HEALTHY and [see what YOU can do](https://www.cdc.gov/coronavirus/2019-ncov/protect/index.html)__! 
+
+Second, there are many excellent news articles and information sources, but I'm sharing some more questions (see left panel) and data for those who are curious about the situation in Korea specifically. All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
+
+By the way, to understand the Korean context, see below figure from [Washington Post](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true).  
+
+```{r plotworld, results="asis", fig.align="left", out.width = "600px"}
+knitr::include_graphics("WP_casetrends.png")
+```
+(__Source__: Washington Post's [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true))
+
+---
+
+#####__Q 7. How has the mortality changed?__ 
+
+```{r}
+latestbyage<-max(dtabyage$date)
+totaldeaths<-dtabyage %>% filter(latest==TRUE) %>% 
+    select(deaths) %>% summarize_all(funs(sum))
+totalcases<- dtanewcasebyday %>% 
+    select(newconfirmedcases) %>% summarize_all(funs(sum))
+mortalityrate<-round(totaldeaths*100 / totalcases, 1)
+
+date<-as.Date(Sys.time(	), format='%d%b%Y')
+length<-as.Date(date, format="%Y-%m-%d") - as.Date("2020-1-20", format="%Y-%m-%d")
+#It has been `r length`, since the first case was confirmed in South Korea. 
+```
+
+South Korea had the first COVID death on February 19th. As of `r latestbyage`, there have been a total of `r totaldeaths`, with an overall mortality rate of `r mortalityrate`% among all cases. 
+
+The below graph shows trend of the overall mortality rate (starting from February 21st). The mortality rate initially increased for several days, but, as the number of new cases increased exponentially (see gray bars also Question 2), the mortality rate declined after the first peak. Then, it has increased gradually to the current level. Since South Korea still has been able to continue the trace-test-isolate strategy, it will be important to monitor mortality trends, providing important insight about this epidemic.  
+
+```{r,  fig.align="left", out.width="600px"}
+#{r plotcfrtrend, results='asis', fig.align="left", out.width="600px"}
+dta<-dtabyday%>%filter(mortality>0)%>%select(date, mortality)
+
+plot_ly(dta, x=dta$date, y=dta$mortality, 
+        type = 'bar') %>%
+        layout(
+            title = "Trends of mortality among confirmed COVID-19 cases",
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=6), 
+                         tickangle=-90),
+            yaxis = list(title = "Mortality per 100 COVID-19 cases (all age groups)")
+            )
+```
+
+```{r plotmortalitytrend, results="asis", fig.align="left", out.width="800px"}
+dta<-dtabyday%>%select(date, mortality, incidence)
+#dta<-dtabyday%>%filter(mortality>0)%>%select(date, mortality, incidence)
+dta$incidence<-dta$incidence/10
+
+plot_ly(dta, x=dta$date, y=dta$incidence, 
+        type = 'bar', name="Incidence (per million population)" ) %>%
+        add_trace(y = ~mortality, name = "Mortality (per 100 cases)" ) %>%
+        layout(
+            title = "Trends of cumulative incidence and mortality by day",
+            yaxis = list(title=""),  
+            xaxis = list(  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=6), 
+                         tickangle=-90),
+            legend = list(orientation = 'h')
+            )
+```
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
+
+By age group, mortality rate among the 70s follow the overall trend shown above: initial decrease and then increase. Mortality among those 80 and above has increased continuously. Mortality rates among those in their 50s and 60s have remained similar over time.  
+
+```{r plotmortalitytrendbyage, results="asis", fig.align="left", out.width="800px"}
+dta50<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="50-59")
+dta60<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="60-69")
+dta70<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="70-79")
+dta80<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="80+")
+
+xaxislist<-list(title = "Date",  
+                             autotick = FALSE,
+                             showticklabels = TRUE, 
+                             tickfont = list(size=8), 
+                             tickangle=-90
+                             )
+yaxislist<-list(range=c(0.2, 11))
+
+fig50<-plot_ly(dta50, x=~date, y=~mortality, 
+               type = 'scatter', mode = 'lines', name = "50-59")%>%
+       layout(xaxis = xaxislist,
+              yaxis = yaxislist)
+fig60<-plot_ly(dta60, x=~date, y=~mortality, 
+               type = 'scatter', mode = 'lines', name = "60-69")%>%
+       layout(xaxis = xaxislist,
+              yaxis = yaxislist)
+fig70<-plot_ly(dta70, x=~date, y=~mortality, 
+               type = 'scatter', mode = 'lines', name = "70-79")%>%
+       layout(xaxis = xaxislist,
+              yaxis = yaxislist)
+fig80<-plot_ly(dta80, x=~date, y=~mortality, 
+               type = 'scatter', mode = 'lines', name = "80+") %>%
+       layout(xaxis = xaxislist,
+              yaxis = yaxislist)
+
+fig <- subplot(fig50, fig60, fig70, fig80) %>%
+        layout(
+            title ="Trends of mortality by age group",
+            yaxis = list(title = "Morality (per 100 confirmed cases)",
+                         titlefont=list(size=10)), 
+            legend = list(orientation = 'h', x = 0.2) 
+            )
+
+fig
+```
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))   
+_Note_: Age-specific mortality data were first released on March, 3rd, and it has been updated daily since March 11th. 
+
+#####__Q 6. How is it affecting children?__ 
+
+```{r}
+latestbyage<-dtabyage%>%filter(latest==TRUE)%>%
+    select(date)%>%summarize_all(funs(max))
+
+incidence09<-dtabyage%>%filter(latest==TRUE & agegroup=="0-9")%>%
+    select(incidence)%>%summarize_all(funs(max))
+
+incidence1019<-dtabyage%>%filter(latest==TRUE & agegroup=="10-19")%>%
+    select(incidence)%>%summarize_all(funs(max))
+
+deaths019<-dtabyage%>%filter(latest==TRUE & age<20)%>%
+    select(deaths)%>%summarize_all(funs(sum))
+
+latestpediatric<-dtapediatric%>%filter(latest==TRUE)%>%
+    select(date)%>%summarize_all(funs(mean))
+```
+
+Compared to other age groups, incidence rates are much lower among those under 20 (See Question 3). There have been `r deaths019` deaths reported in these age groups, and mortality rates are also the lowest among all age groups (See Question 4). 
+
+Still, new detailed data from Korea CDC give some information about cases among children younger than 18 years of age. As of `r latestpediatric`, incidence rate by detailed age group is shown below. Older children have higher infection rates.  
+
+```{r plotincidencepediatric, results='asis', fig.align="left", out.width="600px"}
+dta<-dtapediatric%>%filter(latest==TRUE)
+
+dta$agegroup <- factor(dta$agegroup, levels = c("0-2", "3-6", "7-12", "13-15", "16-18"))
+
+plot_ly(dta, x=dta$agegroup, y=dta$incidence, 
+        mode = 'marker',
+        transforms = list(
+            list(
+                type = 'groupby',
+                groups = dta$date
+                )
+            )
+        ) %>%
+        layout(
+            title = "Number of COVID-19 cases per 100,000 population, by age group",
+            xaxis = list(title = "Age group"),
+            yaxis = list(title = "Incidence rate per 100,000 population"))
+```
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestpediatric`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))   
+_Note_: These age groups roughly corresponds with school system age groups in South Korea.
+
+Of course, this is only epidemiologic perspective. Children's emotional, social, and economic well-being is more complex and difficult to capture yet.  
+
+#####__Q 5. How extensive testing has been?__ 
+
+```{r}
+dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear") %>%
+    filter(is.na(pop10)==F)  
+totalpop<-round(sum(dtapop$pop10)/1000)
+
+latesttest<-max(dtabyday$date)
+totaltest<-round(max(dtabyday$total)/1000)
+testrate<-round(max(dtabyday$total)/sum(dtapop$pop10))
+```
+
+Very aggressive. As of `r latesttest`, a total of `r totaltest` thousand people have been tested. There are `r totalpop` million people in the country, and __`r testrate` in every 1000 people__ have been test. This is the [highest testing rate in the world](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html). Epidemiological investigation of the case No. 31 (who was confirmed on February 18th) prompted immediate and massive testing in Daegu and nation wide.  
+
+```{r plottest, results="asis", fig.align="left", out.width="800px"}
+dta<-left_join(dtabyday, dtanewcasebyday, by = "date") 
+
+plot_ly(dta, x=dta$date, y=dta$test, 
+        type = 'bar', name='All tests' ) %>%
+        add_trace(y=dta$newconfirmedcases, name = 'Positive tests') %>%
+        layout(
+            title = "Number of tests by day",
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=6), 
+                         tickangle=-90,
+                         range=c("2020-02-02","2020-03-20")
+                         ),
+            yaxis = list(title = "Number of tests"))
+```
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030). The number of tests is calculated based on the daily increase in the total number of tests reported.)
+
+#####__Q 4. What is mortality - overall and by age groups?__ 
+
+```{r}
+latestbyage<-max(dtabyage$date)
+mortality80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
+    select(mortality)%>%summarize_all(funs(mean))
+mortality70<-dtabyage%>%filter(latest==TRUE & age==70)%>%
+    select(mortality)%>%summarize_all(funs(mean))
+totaldeaths<-dtabyage %>% filter(latest==TRUE) %>% 
+    select(deaths) %>% summarize_all(funs(sum))
+
+totalcases<- dtanewcasebyday %>% 
+    select(newconfirmedcases) %>% summarize_all(funs(sum))
+
+mortalityrate<-round(totaldeaths*100 / totalcases, 1)
+```
+
+Among those who have COVID, __mortality rate among the elderly with COVID is very high: `r mortality80`% for those who are 80 or older, and `r mortality70`% for those who are between 70-79__. 
+
+Again, this is the case _under a very aggressive trace-test-isolate strategy_, but with no nation wide lock down. As of `r latestbyage`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. These rates - overall as well as by age group - are lower than [mortality rates in China](https://www.who.int/docs/default-source/coronaviruse/who-china-joint-mission-on-covid-19-final-report.pdf). 
+
+There are news articles about extremely over-burdened health systems especially in Daegu. I've read a few mortality case on the newspaper while he/she was waiting for hospital admission, and patients from Daegu and a surrounding province being transferred to other less-affected provinces. However, my _impression_ (as a public health trained reader) is that most severe cases do receive treatment at hospitals. I'm looking for more systematic data on health systems' capacity and response.  
+```{r plotmortality, results='asis', fig.align="left", out.width="600px"}
+dta<-dtabyage%>%filter(latest==TRUE)
+plot_ly(dta, x=dta$agegroup, y=dta$mortality, 
+        mode = 'marker',
+        transforms = list(
+            list(
+                type = 'groupby',
+                groups = dta$date
+                )
+            )
+        ) %>%
+        layout(
+            title = "Mortality rate (%) among confirmed COVID-19 cases, by age group",
+            xaxis = list(title = "Age group"),
+            yaxis = list(title = "Mortality per 100 COVID-19 cases"))
+```
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestbyage`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
+
+#####__Q 3. What age groups are affected?__ 
+
+```{r}
+incidence20<-dtabyage%>%filter(latest==TRUE & age==20)%>%
+    select(incidence)%>%summarize_all(funs(mean))
+```
+
+For this question, let's look at the total cumulative number of confirmed cases since the outbreak _per 100,000 population_ by age group, not the absolute number. Also, keep in your mind, this is what we see _under a very aggressive trace-test-isolate strategy_ (see [this](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html) and [this](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true)). Finally, KCDC releases the number by 10-year age group, and I'm following that categorization.  
 
 * Incidence rate is substantially high in the 20s: `r incidence20` people have been infected per 100,000 population in their 20s. At least partially, this is reflection of a [very concentrated epidemic in Daegu related to a church](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html), and the age pattern among the church attendants. So this age pattern may not be relevant for more generalized pandemic situation.   
 * Incidence rate among those under 20 is low. It may indicate either children are less susceptible, and/or - more importantly - they have been protected at home since all Korean schools have been in long winter break (typically over several weeks) or under temporary closure since the end of December, 2019.  
@@ -162,89 +427,54 @@ plot_ly(dta, x=dta$agegroup, y=dta$incidence,
             xaxis = list(title = "Age group"),
             yaxis = list(title = "Incidence rate per 100,000 population"))
 ```
-(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latest`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestbyage`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
-#####__Q 4. What is mortality - overall and by age groups?__ 
+#####__Q 2. How fast has it been spreading?__ 
+
 ```{r}
-dta<-dtabyage%>%filter(latest==TRUE & age==80)
-mortality80<-max(dta$mortality)
-dta<-dtabyage%>%filter(latest==TRUE & age==70)
-mortality70<-max(dta$mortality)
+totalcases<- dtanewcasebyday %>% 
+    select(newconfirmedcases) %>% summarize_all(funs(sum))
 
-totaldeaths<- dtabyage %>% filter(latest==TRUE) %>% 
-    select(deaths) %>% summarize_all(funs(sum))
-mortalityrate<-round(totaldeaths*100 / total, 1)
+latestsummary<- dtanewcasebyday %>% 
+    select(date) %>% summarize_all(funs(max))
 ```
-Among those who have COVID, __mortality rate among the elderly with COVID is very high: `r mortality80`% for those who are 80 or older, and `r mortality70`% for those who are between 70-79__. 
 
-Again, this is the case _under a very aggressive track-test-isolate strategy_, but with no nation wide lock down. As of `r latest`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. These rates - overall as well as by age group - are lower than [mortality rates in China](https://www.who.int/docs/default-source/coronaviruse/who-china-joint-mission-on-covid-19-final-report.pdf). 
+For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. More recently, the number of new cases started to decrease (see below). For the first time since February 22, the number of new cases is below 100 for two days in a row! Still, as of `r latestsummary`, a total of `r totalcases` people have been infected. 
 
-There are news articles about extremely over-burdened health systems especially in Daegu. I've read at least one mortality case on the newspaper while he/she was waiting for hospital admission, and patients from Daegu and a surrounding province being transferred to other less-affected provinces. However, my _impression_ (as a public health trained reader) is that most severe cases do receive treatment at hospitals. I'm looking for more systematic data on health systems' capacity and response.  
-```{r plotmortality, results='asis', fig.align="left", out.width="600px"}
-dta<-dtabyage%>%filter(latest==TRUE)
-plot_ly(dta, x=dta$agegroup, y=dta$mortality, 
-        mode = 'marker',
-        transforms = list(
-            list(
-                type = 'groupby',
-                groups = dta$date
-                )
-            )
-        ) %>%
+```{r plottrendkorea, results="asis", fig.align="left", out.width="600px"}
+dta<-dtanewcasebyday
+
+plot_ly(dta, x=dta$date, y=dta$newconfirmedcases, 
+        type = 'bar' ) %>%
         layout(
-            title = "Mortality rate (%) among confirmed COVID-19 cases, by age group",
-            xaxis = list(title = "Age group"),
-            yaxis = list(title = "Mortality per 100 COVID-19 cases"))
-```
-(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latest`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
-
-#####__Q 5. How extensive testing has been?__ 
-```{r dataSummaryByDay}
-dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "SummaryByDay")
-    
-names(dta)<- tolower(names(dta))   
-dtabyday<-dta %>%
-    filter(is.na(total)==F) %>%
-    mutate(
-        date=as.Date(date), 
-        confirmed_discharged= ifelse(is.na(confirmed_discharged)==T, 0, confirmed_discharged),
-        confirmed_deceased= ifelse(is.na(confirmed_deceased)==T, 0, confirmed_deceased),
-        confirmed_isolated= ifelse(is.na(confirmed_isolated)==T, confirmed_total, confirmed_isolated),
-        confirmed_total= ifelse(is.na(confirmed_total)==T, confirmed_discharged + confirmed_isolated + confirmed_deceased , confirmed_total),
-        piu_total= ifelse(is.na(piu_total)==T, piu_beingtested+piu_testednegative, piu_total)
-        ) %>%
-    arrange(date) %>%
-    mutate(
-        test=lead(total)-total, 
-        testpositive=lead(confirmed_total)-confirmed_total 
-        )
-
-totaltest<-round(max(dtabyday$total)/1000)
-latestdatetest<-max(dtabyday$date)
-totalpop<-round(sum(dtapop$pop10)/1000)
-testrate<-round(max(dtabyday$total)/sum(dtapop$pop10))
-```
-
-Very aggressive. As of `r latestdatetest`, a total of `r totaltest` thousand people have been tested. There are `r totalpop` million people in the country, and __`r testrate` in every 1000 people__ have been test. This is the [highest testing rate in the world](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html). Epidemiological investigation of the case No. 31 (who was confirmed on February 18th) prompted immediate and massive testing in Daegu and nation wide.  
-
-```{r plottest, results="asis", fig.align="left", out.width="800px"}
-dta<-left_join(dtabyday, dtanewcasebyday, by = "date") 
-
-plot_ly(dta, x=dta$date, y=dta$test, 
-        type = 'bar', name='All tests' ) %>%
-        add_trace(y=dta$newconfirmedcases, name = 'Positive tests') %>%
-        layout(
-            title = "Number of tests by day",
+            title = "Trends of new confirmed COVID-19 cases per day",
             xaxis = list(title = "Date",  
                          autotick = FALSE,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
-                         tickangle=-90,
-                         range=c("2020-02-02","2020-03-15")
-                         ),
-            yaxis = list(title = "Number of tests"))
+                         tickangle=-90),
+            yaxis = list(title = "Number of new confirmed cases"))
 ```
-(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030). The number of tests is calculated based on the daily increase in the total number of tests reported.)
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)
+
+In Daegu, where about three quarters of the cases are concentrated, the daily number of new cases has decreased clearly. 
+```{r plottrenddaegu, results="asis", fig.align="left", out.width = "600px"}
+knitr::include_graphics("KCDC_case_trends_daegu.png")
+```
+(__Source__: Figure from KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), _"Updates on COVID-19 in Korea (as of 19 March)"_)
+
+But, COVID can and does continue to spike up. In Seoul, there was a peak around the same time with the sharp epidemic in Daegu, followed by several days with much lower number of or no new cases. But, there seems to be a specific call-center related epidemic, as shown in the sudden increases in the number of new cases around March 11th.  
+
+```{r plottrendseoul, results="asis", fig.align="left", out.width = "600px"}
+knitr::include_graphics("KCDC_case_trends_seoul.png")
+```
+(__Source__: Figure from KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), _"Updates on COVID-19 in Korea (as of 19 March)"_)
+
+#####__Q 1. When did it start?__ 
+
+On January 20, 2020, there was the first laboratory confirmed COVID case. 
+
+---
 
 <p style="color:gray">
 More questions and data coming soon, as I continue digging the awesome KCDC website...    
