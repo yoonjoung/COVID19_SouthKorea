@@ -355,7 +355,7 @@ plot_ly(dta, x=dta$date, y=dta$test,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
                          tickangle=-90,
-                         range=c("2020-02-02","2020-03-20")
+                         range=c("2020-02-02","2020-03-22")
                          ),
             yaxis = list(title = "Number of tests"))
 ```
