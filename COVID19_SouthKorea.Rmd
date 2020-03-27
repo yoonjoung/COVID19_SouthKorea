@@ -21,6 +21,7 @@ suppressMessages(library(ggplot2))
 suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(readxl)))
 suppressMessages(library(plotly))
+suppressMessages(library(Matrix))
 
 ```
 
@@ -71,7 +72,8 @@ dtabyage<-left_join(dtabyage, dtapop, by = "age") %>%
     mutate(
         incidence=round(100*confirmedcases/pop10),
         mortality=round(100*deaths/confirmedcases, 1),
-        latest=date==max(date)
+        latest=date==max(date), 
+        initial=date==min(date) 
         ) 
 ```
 
@@ -157,28 +159,157 @@ dtapediatric<-left_join(dtapediatric, dtapop, by = "agegroup") %>%
         ) 
 ```
 
+```{r dataByRegion}
+dta<-as.data.frame(read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByRegion"))
+
+names(dta) <- gsub(" ", "", names(dta))
+names(dta)<- tolower(names(dta))   
+
+#make sure the columns are all numeric 
+colnames(dta[,6:24])
+for (i in 6:24){
+dta[,i]<-as.numeric(dta[,i])    
+}
+
+dtabyregion<-dta %>%
+    mutate_each(funs(tolower), status) %>%
+    filter(status!="" & status!="shincheonji") %>%
+    mutate(
+        status=ifelse(status=="sub-total", "total", status),    
+        status=ifelse(status=="subtotal", "total", status) 
+    ) %>%
+    arrange(date, status, time) %>%
+    mutate(
+        gg=sum(seoul, incheon, gyeonggi), 
+        gw=gangwon,
+        cb=chungbuk,
+        cn=sum(daejeon, sejong, chungnam),   
+        gb=sum(daegu, ulsan, gyeongbuk),            
+        gn=sum(busan, gyeongnam),            
+        jb=jeonbuk,          
+        jn=sum(gwangju, jeonnam),           
+        jj=jeju,             
+        airport=airportscreening, 
+        TOTAL=sum(gg,gw,cn,cb,gb,gn,jb,jn,jj,airport)
+    ) 
+
+
+table(dtabyregion$status)
+table(dtabyregion$date, dtabyregion$status)
+temp<-dtabyregion %>% group_by(date) %>% summarize(count=n())
+nrow(temp)
+
+```
+
 __COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
 
-(Updated: `r time`)  
+(Updated: `r time` EST)  
 
 So, I have been watching the epidemic in China and Korea since the beginning, but it is still not easy to settle into this reality here in the US. 
 
 First of all, everyone, __STAY HEALTHY and [see what YOU can do](https://www.cdc.gov/coronavirus/2019-ncov/protect/index.html)__! 
 
-Second, there are many excellent news articles and information sources, but I'm sharing some more questions (see left panel) and data for those who are curious about the situation in Korea specifically. All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
+Second, there are many excellent news articles and information sources, but I'm sharing some more questions (see left panel) and answers for those who are curious about the situation in Korea specifically. All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
 
-_Hover over each figure to see values and more options._
+_By the way, if you want to know more about South Korean situation - compared to other countries, see this Washington Post aticle: [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true)_
 
-By the way, to understand the Korean context, see below figure from [Washington Post](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true).  
-
-```{r plotworld, results="asis", fig.align="left", out.width = "600px"}
-knitr::include_graphics("WP_casetrends.png")
+```{r plotworld, fig.align="left", out.width = "600px"}
+#knitr::include_graphics("WP_casetrends.png")
 ```
-(__Source__: Washington Post's [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true))
 
 ---
 
-#####__Q 7. How has the mortality changed?__ 
+#####__Q 8 Is COVID spreading faster in some age groups than others?__ 
+```{r}
+temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-03")
+incidence80_0303<-mean(temp$incidence)
+
+temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-16")
+incidence80_0316<-mean(temp$incidence)
+
+temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-26")
+incidence80_0326<-mean(temp$incidence)
+ 
+```
+
+As I saw overall mortality going up steadily (See Question 7.1), I wanted to know if COVID is spreading more rapidly among those who would have higher mortality risk (e.g., older people). One way to answer that question is to see if infection incidence rate (number of confirmed cases per population) increases more rapidly in one age group than others. 
+
+In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0316` on March 16th, and `r incidence80_0326` on March 26th. This may be due to recent outbreaks in nursing homes.  
+
+_Hover over each figure to see values and more options._
+```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="600px"}
+
+dtasorted<-dtabyage %>%
+    select(date, age, incidence) %>%
+    mutate(
+        age=paste0("incidence",age)
+    ) %>%
+    arrange(date, age)
+#head(dtasorted, 15)
+
+dta<-dtasorted %>% 
+    spread(age, incidence, fill = NA, convert = FALSE) 
+#head(dta, 20)
+#str(dta)
+
+fig <- plot_ly(dta, x=~date, y=~incidence0, name = "0-9", 
+               type = 'scatter', mode='lines',
+               line = list(color = c( "rgb(204,236,230)"))) %>% 
+    add_trace(y = ~incidence10, name = "10-19", line = list(color = c( "rgb(153,216,201)"))) %>% 
+    add_trace(y = ~incidence20, name = "20-29", line = list(color = c( "rgb(102,194,164)"))) %>% 
+    add_trace(y = ~incidence30, name = "30-39", line = list(color = c( "rgb(65,174,118)"))) %>% 
+    add_trace(y = ~incidence40, name = "40-49", line = list(color = c( "rgb(35,139,69)"))) %>% 
+    add_trace(y = ~incidence50, name = "50-59", line = list(color = c( "rgb(0,109,44)"))) %>% 
+    add_trace(y = ~incidence60, name = "60-69", line = list(color = c( "rgb(0,68,27)"))) %>% 
+    add_trace(y = ~incidence70, name = "70-79", line = list(color = c( "rgb(33,113,18)"))) %>% 
+    add_trace(y = ~incidence80, name = "80+", line = list(color = c( "rgb(239,59,44)"))) %>% 
+    layout(
+        title ="Trends of incidence rate by age group",
+        yaxis = list(title = "Number of confirmed cases (per 100000 population)",
+                     titlefont=list(size=12)), 
+        legend = list(font=list(size=10)) 
+        ) 
+
+fig
+```
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))   
+_Note_: Age-specific data were first released on March, 3rd, and it has been updated daily since March 11th. 
+
+```{r plotagecomposition, fig.align="left", out.width="800px"}
+#Another approach, potentially simpler, is to see any changes in age-composition of confirmed cases. As expected based on the above figure, there are relatively more elderlies. 
+
+#_Hover over each figure to see values and more options._
+
+temp <- dtabyage%>%select(date, confirmedcases)%>%
+    group_by(date)%>%summarize_all(funs(sum))%>%
+    mutate(total=confirmedcases)%>%select(date, total)
+
+dta<-left_join(dtabyage, temp, by = "date") %>% 
+    select(date, agegroup, confirmedcases, total) %>% 
+    mutate(
+        pct=round(100*confirmedcases/total,1)    
+    )
+
+
+fig<-dta %>% group_by(agegroup) %>% 
+    arrange(date) %>%
+    plot_ly( x = ~date, y = ~pct, 
+             color= ~agegroup, colors = 'Reds',
+             type = "bar") %>%
+    layout(
+        title ="Age pattern of confirmed cases over time",
+        yaxis = list(title = "Percent of confirmed cases",
+                     titlefont=list(size=12)), 
+        legend = list(font=list(size=10)),
+        barmode = 'stack'
+        ) 
+
+fig
+#(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030))   
+#_Note_: Age-specific data were first released on March, 3rd, and it has been updated daily since March 11th. 
+```
+
+#####__Q 7.1 How has mortality changed over time?__ 
 
 ```{r}
 latestbyage<-max(dtabyage$date)
@@ -214,6 +345,7 @@ plot_ly(dta, x=dta$date, y=dta$mortality,
             )
 ```
 
+_Hover over each figure to see values and more options._
 ```{r plotmortalitytrend, results="asis", fig.align="left", out.width="800px"}
 dta<-dtabyday%>%select(date, mortality, incidence)
 #dta<-dtabyday%>%filter(mortality>0)%>%select(date, mortality, incidence)
@@ -237,8 +369,23 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
-By age group, mortality rate among the 70s follow the overall trend shown above: initial decrease and then increase. Mortality among those 80 and above has increased continuously. Mortality rates among those in their 50s and 60s have remained similar over time.  
+#####__Q 7.2 How has mortality changed over time, by age group?__ 
 
+```{r}
+latestbyage<-max(dtabyage$date)
+mortality80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
+    select(mortality)%>%summarize_all(funs(mean))
+
+initialbyage<-min(dtabyage$date)
+mortality80initial<-dtabyage%>%filter(initial==TRUE & age==80)%>%
+    select(mortality)%>%summarize_all(funs(mean))
+```
+
+The graph below shows trends of mortality by age group - starting from March 3rd. Mortality among those 80 and above has increased continuously. __As of `r latestbyage`, `r mortality80`% of people in their 80s who have confirmed COVID have died, increaed from `r mortality80initial`% on `r initialbyage`__. This increase is not surprising, considering the typical clinical timeline and prognosis of COVID infection. A more important question is _if and when_ the mortality rate will level off, as this epidemic progresses and a bigger proportion of population is affected.  
+
+Mortality rate among the 70s has also increased but at a slower margin. Mortality among those in their 50s and 60s have remained similar over time or increased slowly.  
+
+_Hover over each figure to see values and more options._
 ```{r plotmortalitytrendbyage, results="asis", fig.align="left", out.width="800px"}
 dta50<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="50-59")
 dta60<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="60-69")
@@ -251,7 +398,7 @@ xaxislist<-list(title = "Date",
                              tickfont = list(size=8), 
                              tickangle=-90
                              )
-yaxislist<-list(range=c(0.2, 11))
+yaxislist<-list(range=c(0.2, 14))
 
 fig50<-plot_ly(dta50, x=~date, y=~mortality, 
                type = 'scatter', mode = 'lines', name = "50-59")%>%
@@ -306,6 +453,7 @@ Compared to other age groups, incidence rates are much lower among those under 2
 
 Still, new detailed data from Korea CDC give some information about cases among children younger than 18 years of age. As of `r latestpediatric`, incidence rate by detailed age group is shown below. Older children have higher infection rates.  
 
+_Hover over each figure to see values and more options._
 ```{r plotincidencepediatric, results='asis', fig.align="left", out.width="600px"}
 dta<-dtapediatric%>%filter(latest==TRUE)
 
