@@ -26,7 +26,7 @@ suppressMessages(library(Matrix))
 ```
 
 ```{r dataByDay}
-dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByDay")
+dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByDayNewCases")
 str(dta)
 
     #table(dta$group)
@@ -130,7 +130,7 @@ str(dta)
 
 names(dta) <- gsub(" ", "", names(dta))
 names(dta)<- tolower(names(dta))   
-str(dta)
+#str(dta)
 
 dtapop<-dta %>%    
     filter(is.na(age)==F)  %>%
@@ -148,8 +148,8 @@ dtapop<-dta %>%
     group_by(agegroup) %>%
     summarize_all(funs(sum))
 
-str(dtapediatric)
-str(dtapop)
+#str(dtapediatric)
+#str(dtapop)
 
 dtapediatric<-left_join(dtapediatric, dtapop, by = "agegroup") %>%
     mutate(
@@ -165,10 +165,16 @@ dta<-as.data.frame(read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19
 names(dta) <- gsub(" ", "", names(dta))
 names(dta)<- tolower(names(dta))   
 
-#make sure the columns are all numeric 
-colnames(dta[,6:24])
-for (i in 6:24){
-dta[,i]<-as.numeric(dta[,i])    
+colnames(dta[,7:24])
+###make sure the region/city columns are all numeric 
+###replace missing with 0 in region/city columns 
+for (i in 7:24){
+    dta[,i]<-as.numeric(dta[,i])    
+    for (j in 1:nrow(dta)){
+        if (is.na(dta[j,i])==TRUE){
+            dta[j,i]<-0    
+        }
+    }
 }
 
 dtabyregion<-dta %>%
@@ -180,26 +186,30 @@ dtabyregion<-dta %>%
     ) %>%
     arrange(date, status, time) %>%
     mutate(
-        gg=sum(seoul, incheon, gyeonggi), 
+        gg=seoul+ incheon+ gyeonggi, 
         gw=gangwon,
         cb=chungbuk,
-        cn=sum(daejeon, sejong, chungnam),   
-        gb=sum(daegu, ulsan, gyeongbuk),            
-        gn=sum(busan, gyeongnam),            
+        cn=daejeon+ sejong+ chungnam,   
+        gb=daegu+ ulsan+ gyeongbuk,            
+        gn=busan+ gyeongnam,            
         jb=jeonbuk,          
-        jn=sum(gwangju, jeonnam),           
+        jn=gwangju+ jeonnam,           
         jj=jeju,             
         airport=airportscreening, 
-        TOTAL=sum(gg,gw,cn,cb,gb,gn,jb,jn,jj,airport)
-    ) 
+        TOTAL=gg+gw+cn+cb+gb+gn+jb+jn+jj+airport
+    ) %>%
+    select(date, time, status, gg,gw,cn,cb,gb,gn,jb,jn,jj,airport, total, TOTAL)%>% 
+    group_by(date)%>%
+    mutate(
+        tworeports =sd(time)!=0, 
+        early =min(time)
+        )%>%
+    filter(tworeports==0 | (tworeports==1 & early==time))
 
-
-table(dtabyregion$status)
 table(dtabyregion$date, dtabyregion$status)
-temp<-dtabyregion %>% group_by(date) %>% summarize(count=n())
-nrow(temp)
 
 ```
+
 
 __COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
 
@@ -219,22 +229,22 @@ _By the way, if you want to know more about South Korean situation - compared to
 
 ---
 
-#####__Q 8 Is COVID spreading faster in some age groups than others?__ 
+#####__Q 8. Is it spreading faster in some age groups than others?__ 
 ```{r}
 temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-03")
 incidence80_0303<-mean(temp$incidence)
 
-temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-16")
-incidence80_0316<-mean(temp$incidence)
+temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-17")
+incidence80_0317<-mean(temp$incidence)
 
-temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-26")
-incidence80_0326<-mean(temp$incidence)
+temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-27")
+incidence80_0327<-mean(temp$incidence)
  
 ```
 
-As I saw overall mortality going up steadily (See Question 7.1), I wanted to know if COVID is spreading more rapidly among those who would have higher mortality risk (e.g., older people). One way to answer that question is to see if infection incidence rate (number of confirmed cases per population) increases more rapidly in one age group than others. 
+So, we know about the age-pattern of mortality (i.e., higher in older ages, see Question 4) and relatively young patient population in South Korea (See Question 3). Meanwhile, as I saw overall mortality going up steadily (See Question 7.1), I wanted to know if COVID is spreading more rapidly among those who would have higher mortality risk (e.g., older people). One way to answer that question is to see if infection incidence rate (number of confirmed cases per population) has increased more rapidly in one age group than others. 
 
-In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0316` on March 16th, and `r incidence80_0326` on March 26th. This may be due to recent outbreaks in nursing homes.  
+In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0317` on March 17th, and `r incidence80_0327` on March 27th. This may be due to recent outbreaks in nursing homes.  
 
 _Hover over each figure to see values and more options._
 ```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="600px"}
@@ -264,7 +274,7 @@ fig <- plot_ly(dta, x=~date, y=~incidence0, name = "0-9",
     add_trace(y = ~incidence70, name = "70-79", line = list(color = c( "rgb(33,113,18)"))) %>% 
     add_trace(y = ~incidence80, name = "80+", line = list(color = c( "rgb(239,59,44)"))) %>% 
     layout(
-        title ="Trends of incidence rate by age group",
+        title ="Trends of cumulative incidence rate by age group",
         yaxis = list(title = "Number of confirmed cases (per 100000 population)",
                      titlefont=list(size=12)), 
         legend = list(font=list(size=10)) 
@@ -309,7 +319,7 @@ fig
 #_Note_: Age-specific data were first released on March, 3rd, and it has been updated daily since March 11th. 
 ```
 
-#####__Q 7.1 How has mortality changed over time?__ 
+#####__Q 7.1. How has mortality changed over time?__ 
 
 ```{r}
 latestbyage<-max(dtabyage$date)
@@ -369,7 +379,7 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
-#####__Q 7.2 How has mortality changed over time, by age group?__ 
+#####__Q 7.2. How has mortality changed over time, by age group?__ 
 
 ```{r}
 latestbyage<-max(dtabyage$date)
@@ -379,6 +389,7 @@ mortality80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
 initialbyage<-min(dtabyage$date)
 mortality80initial<-dtabyage%>%filter(initial==TRUE & age==80)%>%
     select(mortality)%>%summarize_all(funs(mean))
+
 ```
 
 The graph below shows trends of mortality by age group - starting from March 3rd. Mortality among those 80 and above has increased continuously. __As of `r latestbyage`, `r mortality80`% of people in their 80s who have confirmed COVID have died, increaed from `r mortality80initial`% on `r initialbyage`__. This increase is not surprising, considering the typical clinical timeline and prognosis of COVID infection. A more important question is _if and when_ the mortality rate will level off, as this epidemic progresses and a bigger proportion of population is affected.  
@@ -387,6 +398,10 @@ Mortality rate among the 70s has also increased but at a slower margin. Mortalit
 
 _Hover over each figure to see values and more options._
 ```{r plotmortalitytrendbyage, results="asis", fig.align="left", out.width="800px"}
+
+temp<-dtabyage%>%filter(latest==TRUE & age==80)%>%select(mortality)%>%summarize_all(funs(mean))
+upperrange<-round(temp$mortality+1)
+
 dta50<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="50-59")
 dta60<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="60-69")
 dta70<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="70-79")
@@ -398,7 +413,7 @@ xaxislist<-list(title = "Date",
                              tickfont = list(size=8), 
                              tickangle=-90
                              )
-yaxislist<-list(range=c(0.2, 14))
+yaxislist<-list(range=c(0.2, upperrange))
 
 fig50<-plot_ly(dta50, x=~date, y=~mortality, 
                type = 'scatter', mode = 'lines', name = "50-59")%>%
@@ -419,7 +434,7 @@ fig80<-plot_ly(dta80, x=~date, y=~mortality,
 
 fig <- subplot(fig50, fig60, fig70, fig80) %>%
         layout(
-            title ="Trends of mortality by age group",
+            title ="Trends of cumulative mortality by age group",
             yaxis = list(title = "Morality (per 100 confirmed cases)",
                          titlefont=list(size=10)), 
             legend = list(orientation = 'h', x = 0.2) 
@@ -505,7 +520,7 @@ plot_ly(dta, x=dta$date, y=dta$test,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
                          tickangle=-90,
-                         range=c("2020-02-02","2020-03-24")
+                         range=c("2020-02-02","2020-03-27")
                          ),
             yaxis = list(title = "Number of tests"))
 ```
@@ -591,7 +606,7 @@ latestsummary<- dtanewcasebyday %>%
     select(date) %>% summarize_all(funs(max))
 ```
 
-For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. More recently, the number of new cases started to decrease (see below). For the first time since February 22, the number of new cases is below 100 for two days in a row! Still, as of `r latestsummary`, a total of `r totalcases` people have been infected. 
+For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. __More recently, the number of new cases started to decrease (see below). Still, as of `r latestsummary`, a total of `r totalcases` people have been infected__. 
 
 ```{r plottrendkorea, results="asis", fig.align="left", out.width="600px"}
 dta<-dtanewcasebyday
