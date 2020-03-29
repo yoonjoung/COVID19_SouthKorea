@@ -160,6 +160,47 @@ dtapediatric<-left_join(dtapediatric, dtapop, by = "agegroup") %>%
 ```
 
 ```{r dataByRegion}
+dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear") %>%
+    filter(is.na(pop10)==F)  
+totalpop<-round(sum(dtapop$pop10)) #total population in thousand
+totalpop
+
+dtapopregion<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/Citypopulation_SouthKorea.xlsx") 
+
+dtapopregion$pop=dtapopregion[,10]
+table(dtapopregion$region)
+
+dtapopregion<-dtapopregion %>%
+    select(region, pop) %>%
+    mutate(
+        region=ifelse(region=="Seoul", "gg", region), 
+        region=ifelse(region=="Incheon", "gg", region),  
+        region=ifelse(region=="Gyeonggi-do", "gg", region),
+        region=ifelse(region=="Gangwon-do", "gw", region),
+        region=ifelse(region=="Chungcheongbuk-do", "cb", region),        
+        region=ifelse(region=="Chungcheongnam-do", "cn", region),
+        region=ifelse(region=="Daejeon", "cn", region),
+        region=ifelse(region=="Sejong", "cn", region),
+        region=ifelse(region=="Daegu", "gb", region),
+        region=ifelse(region=="Ulsan", "gb", region),
+        region=ifelse(region=="Gyeongsangbuk-do", "gb", region),
+        region=ifelse(region=="Busan", "gn", region),
+        region=ifelse(region=="Gyeongsangnam-do", "gn", region),
+        region=ifelse(region=="Jeollabuk-do", "jb", region),
+        region=ifelse(region=="Gwangju", "jn", region),
+        region=ifelse(region=="Jeollanam-do", "jn", region),
+        region=ifelse(region=="Jeju-do", "jj", region)
+    ) %>%
+    group_by(region) %>% summarize_all(funs(sum)) %>%
+    mutate(
+        total=sum(pop),
+        pct=pop/total,#pop in 1000
+        pop=totalpop*pct,#total pop from WPP 2019 revision
+        total2=sum(pop)
+        ) %>%
+    select(region, pop) %>%arrange(region)
+#head(dtapopregion, 10)
+
 dta<-as.data.frame(read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByRegion"))
 
 names(dta) <- gsub(" ", "", names(dta))
@@ -177,7 +218,7 @@ for (i in 7:24){
     }
 }
 
-dtabyregion<-dta %>%
+dtabyregiondetail<-dta %>%
     mutate_each(funs(tolower), status) %>%
     filter(status!="" & status!="shincheonji") %>%
     mutate(
@@ -198,18 +239,44 @@ dtabyregion<-dta %>%
         airport=airportscreening, 
         TOTAL=gg+gw+cn+cb+gb+gn+jb+jn+jj+airport
     ) %>%
-    select(date, time, status, gg,gw,cn,cb,gb,gn,jb,jn,jj,airport, total, TOTAL)%>% 
+    select(date, time, status, gg,gw,cn,cb,gb,gn,jb,jn,jj,airport, 
+           total, TOTAL)%>% 
     group_by(date)%>%
     mutate(
         tworeports =sd(time)!=0, 
         early =min(time)
         )%>%
-    filter(tworeports==0 | (tworeports==1 & early==time))
+    filter(tworeports==0 | (tworeports==1 & early==time))%>%
+    select(-time, -tworeports, -early, -total)%>%
+    arrange(date)
 
-table(dtabyregion$date, dtabyregion$status)
+dtabyregiontotal<-dtabyregiondetail %>% 
+    filter(status=="total") %>% select(-status) %>% arrange(date)
+View(dtabyregiontotal)
+
+dtabyregion<-dtabyregiontotal %>% 
+    gather(region, cases, gg:airport, convert = FALSE) %>% 
+    arrange(region, date) 
+    #total confirmed cases by region & date
+View(dtabyregion)
+
+    colnames(dtabyregiontotal[,3:12])
+    for (i in 3:12){
+        for (j in 2:nrow(dtabyregiontotal)){
+            dtabyregiontotal[j,i]=dtabyregiontotal[j-1,i]
+            }
+        }
+    tail(dtabyregiontotal, 20)
+
+dtabyregion2<-dtabyregiontotal %>% 
+    gather(region, prev, gg:airport, convert = FALSE) %>% 
+    arrange(region, date)   
+    #total new cases by region & date
+head(dtabyregion2,20)    
+
+dtabyregion<-left_join(dtabyregion, dtabyregion2, by = c("date", "region"))
 
 ```
-
 
 __COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
 
@@ -219,9 +286,9 @@ So, I have been watching the epidemic in China and Korea since the beginning, bu
 
 First of all, everyone, __STAY HEALTHY and [see what YOU can do](https://www.cdc.gov/coronavirus/2019-ncov/protect/index.html)__! 
 
-Second, there are many excellent news articles and information sources, but I'm sharing some more questions (see left panel) and answers for those who are curious about the situation in Korea specifically. All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
+Second, there are many excellent news articles and information sources, but I'm sharing some more __questions (see left panel) and answers for those who are curious about the situation in South Korea, specifically. Please note that the country has had a trace-test-isolate strategy consistently from the outset of this epidemic__. If you want to know more about South Korean situation - compared to other countries, see this Washington Post article: [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true) 
 
-_By the way, if you want to know more about South Korean situation - compared to other countries, see this Washington Post aticle: [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true)_
+All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
 
 ```{r plotworld, fig.align="left", out.width = "600px"}
 #knitr::include_graphics("WP_casetrends.png")
@@ -234,17 +301,17 @@ _By the way, if you want to know more about South Korean situation - compared to
 temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-03")
 incidence80_0303<-mean(temp$incidence)
 
-temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-17")
-incidence80_0317<-mean(temp$incidence)
+temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-19")
+incidence80_0319<-mean(temp$incidence)
 
-temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-27")
-incidence80_0327<-mean(temp$incidence)
+temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-29")
+incidence80_0329<-mean(temp$incidence)
  
 ```
 
 So, we know about the age-pattern of mortality (i.e., higher in older ages, see Question 4) and relatively young patient population in South Korea (See Question 3). Meanwhile, as I saw overall mortality going up steadily (See Question 7.1), I wanted to know if COVID is spreading more rapidly among those who would have higher mortality risk (e.g., older people). One way to answer that question is to see if infection incidence rate (number of confirmed cases per population) has increased more rapidly in one age group than others. 
 
-In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0317` on March 17th, and `r incidence80_0327` on March 27th. This may be due to recent outbreaks in nursing homes.  
+In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0319` on March 19th, and `r incidence80_0329` on March 29th. This may be due to recent outbreaks in nursing homes.  
 
 _Hover over each figure to see values and more options._
 ```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="600px"}
@@ -520,7 +587,7 @@ plot_ly(dta, x=dta$date, y=dta$test,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
                          tickangle=-90,
-                         range=c("2020-02-02","2020-03-27")
+                         range=c("2020-02-02","2020-03-29")
                          ),
             yaxis = list(title = "Number of tests"))
 ```
