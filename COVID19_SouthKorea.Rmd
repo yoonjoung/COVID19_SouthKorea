@@ -206,10 +206,11 @@ dta<-as.data.frame(read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19
 names(dta) <- gsub(" ", "", names(dta))
 names(dta)<- tolower(names(dta))   
 
-colnames(dta[,7:24])
+colnames(dta[,8:25])
+
 ###make sure the region/city columns are all numeric 
 ###replace missing with 0 in region/city columns 
-for (i in 7:24){
+for (i in 8:25){
     dta[,i]<-as.numeric(dta[,i])    
     for (j in 1:nrow(dta)){
         if (is.na(dta[j,i])==TRUE){
@@ -220,6 +221,7 @@ for (i in 7:24){
 
 dtabyregiondetail<-dta %>%
     mutate_each(funs(tolower), status) %>%
+    filter(metric=="cumulative cases") %>%
     filter(status!="" & status!="shincheonji") %>%
     mutate(
         status=ifelse(status=="sub-total", "total", status),    
@@ -245,37 +247,24 @@ dtabyregiondetail<-dta %>%
     mutate(
         tworeports =sd(time)!=0, 
         early =min(time)
-        )%>%
+        )%>%ungroup()%>%
     filter(tworeports==0 | (tworeports==1 & early==time))%>%
     select(-time, -tworeports, -early, -total)%>%
     arrange(date)
 
 dtabyregiontotal<-dtabyregiondetail %>% 
     filter(status=="total") %>% select(-status) %>% arrange(date)
-View(dtabyregiontotal)
+#View(dtabyregiontotal)
 
 dtabyregion<-dtabyregiontotal %>% 
     gather(region, cases, gg:airport, convert = FALSE) %>% 
-    arrange(region, date) 
-    #total confirmed cases by region & date
-View(dtabyregion)
-
-    colnames(dtabyregiontotal[,3:12])
-    for (i in 3:12){
-        for (j in 2:nrow(dtabyregiontotal)){
-            dtabyregiontotal[j,i]=dtabyregiontotal[j-1,i]
-            }
-        }
-    tail(dtabyregiontotal, 20)
-
-dtabyregion2<-dtabyregiontotal %>% 
-    gather(region, prev, gg:airport, convert = FALSE) %>% 
-    arrange(region, date)   
-    #total new cases by region & date
-head(dtabyregion2,20)    
-
-dtabyregion<-left_join(dtabyregion, dtabyregion2, by = c("date", "region"))
-
+    arrange(region, date) %>% 
+    mutate(
+        newcases=cases-lag(cases),
+        newcases=ifelse(region!=lag(region), NA, newcases )
+    )
+    
+#View(dtabyregion)
 ```
 
 __COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
@@ -295,6 +284,71 @@ All data are from press release from [KCDC](https://www.cdc.go.kr/) - available 
 ```
 
 ---
+
+```{r plotnewcasesbyregion,  fig.align="left", out.width="600px"}
+#results="asis",
+
+dta<-dtabyregion
+plot_ly(dta, x=~date, y=~newcases, 
+        type = 'bar', color= ~region ) %>%
+        layout(
+            title = c("Trend of daily new confirmed COVID-19 cases"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of new confirmed cases"),
+            barmode="stack",  
+            legend = list(x = 0.9, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+
+dta<-dtabyregion%>%filter(region=="gg")
+plot_ly(dta, x=~date, y=~newcases, type = 'bar' ) %>%
+        layout(
+            title = c("Trend of daily new confirmed COVID-19 cases"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of new confirmed cases"),
+            barmode="stack",  
+            legend = list(x = 0.9, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+
+dta<-dtabyregion%>%filter(region=="gb")
+plot_ly(dta, x=~date, y=~newcases, type = 'bar' ) %>%
+        layout(
+            title = c("Trend of daily new confirmed COVID-19 cases"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of new confirmed cases"),
+            barmode="stack",  
+            legend = list(x = 0.9, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+
+dta<-dtabyregion%>%filter(region=="airport")
+plot_ly(dta, x=~date, y=~newcases, type = 'bar' ) %>%
+        layout(
+            title = c("Trend of daily new confirmed COVID-19 cases"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of new confirmed cases"),
+            barmode="stack",  
+            legend = list(x = 0.9, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+```
 
 #####__Q 8. Is it spreading faster in some age groups than others?__ 
 ```{r}
@@ -587,7 +641,7 @@ plot_ly(dta, x=dta$date, y=dta$test,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
                          tickangle=-90,
-                         range=c("2020-02-02","2020-03-29")
+                         range=c("2020-02-02","2020-03-30")
                          ),
             yaxis = list(title = "Number of tests"))
 ```
