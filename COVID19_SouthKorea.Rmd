@@ -358,14 +358,14 @@ incidence80_0303<-mean(temp$incidence)
 temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-21")
 incidence80_0321<-mean(temp$incidence)
 
-temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-31")
-incidence80_0331<-mean(temp$incidence)
+temp<-dtabyage%>%select(date, agegroup, incidence, latest)%>%filter(agegroup=="80+")%>%filter(latest==TRUE)
+incidence80_latest<-mean(temp$incidence)
  
 ```
 
 So, we know about the age-pattern of mortality (i.e., higher in older ages, see Question 4) and relatively young patient population in South Korea (See Question 3). Meanwhile, as I saw overall mortality going up steadily (See Question 7.1), I wanted to know if COVID is spreading more rapidly among those who would have higher mortality risk (e.g., older people). One way to answer that question is to see if infection incidence rate (number of confirmed cases per population) has increased more rapidly in one age group than others. 
 
-In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0321` on March 21st, and `r incidence80_0331` on March 31st. This may be due to recent outbreaks in nursing homes.  
+In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0321` on March 21st, and `r incidence80_latest` on `r date`. The increase around mid-late March reflects [outbreaks in nursing homes](https://www.scmp.com/week-asia/health-environment/article/3075937/coronavirus-nursing-homes-emerge-south-koreas-new).  
 
 _Hover over each figure to see values and more options._
 ```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="600px"}
@@ -641,7 +641,7 @@ plot_ly(dta, x=dta$date, y=dta$test,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
                          tickangle=-90,
-                         range=c("2020-02-02","2020-03-31")
+                         range=c("2020-02-02","2020-04-01")
                          ),
             yaxis = list(title = "Number of tests"))
 ```
