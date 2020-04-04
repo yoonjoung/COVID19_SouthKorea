@@ -267,9 +267,9 @@ dtabyregion<-dtabyregiontotal %>%
 #View(dtabyregion)
 ```
 
-__COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
+#####__COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
 
-(Updated: `r time` EST)  
+(Updated: `r time` EDT)  
 
 So, I have been watching the epidemic in China and Korea since the beginning, but it is still not easy to settle into this reality here in the US. 
 
@@ -365,7 +365,7 @@ incidence80_latest<-mean(temp$incidence)
 
 So, we know about the age-pattern of mortality (i.e., higher in older ages, see Question 4) and relatively young patient population in South Korea (See Question 3). Meanwhile, as I saw overall mortality going up steadily (See Question 7.1), I wanted to know if COVID is spreading more rapidly among those who would have higher mortality risk (e.g., older people). One way to answer that question is to see if infection incidence rate (number of confirmed cases per population) has increased more rapidly in one age group than others. 
 
-In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0321` on March 21st, and `r incidence80_latest` on `r date`. The increase around mid-late March reflects [outbreaks in nursing homes](https://www.scmp.com/week-asia/health-environment/article/3075937/coronavirus-nursing-homes-emerge-south-koreas-new).  
+In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0321` on March 21st, and __`r incidence80_latest` on `r date`__. The increase around mid-late March reflects [outbreaks in nursing homes](https://www.scmp.com/week-asia/health-environment/article/3075937/coronavirus-nursing-homes-emerge-south-koreas-new).  
 
 _Hover over each figure to see values and more options._
 ```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="600px"}
@@ -640,8 +640,7 @@ plot_ly(dta, x=dta$date, y=dta$test,
                          autotick = FALSE,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
-                         tickangle=-90,
-                         range=c("2020-02-02","2020-04-01")
+                         tickangle=-90
                          ),
             yaxis = list(title = "Number of tests"))
 ```
@@ -666,7 +665,7 @@ mortalityrate<-round(totaldeaths*100 / totalcases, 1)
 
 Among those who have COVID, __mortality rate among the elderly with COVID is very high: `r mortality80`% for those who are 80 or older, and `r mortality70`% for those who are between 70-79__. 
 
-Again, this is the case _under a very aggressive trace-test-isolate strategy_, but with no nation wide lock down. As of `r latestbyage`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. These rates - overall as well as by age group - are lower than [mortality rates in China](https://www.who.int/docs/default-source/coronaviruse/who-china-joint-mission-on-covid-19-final-report.pdf). 
+Again, this is the case _under a very aggressive trace-test-isolate strategy_, but with no nation wide lock down. As of `r latestbyage`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. These rates - overall as well as by age group - are lower than [mortality rates in China](https://www.who.int/docs/default-source/coronaviruse/who-china-joint-mission-on-covid-19-final-report.pdf) (3.8% among all age groups and 21.9% among those 80 and older, as of 20 February, 2020). 
 
 There are news articles about extremely over-burdened health systems especially in Daegu. I've read a few mortality case on the newspaper while he/she was waiting for hospital admission, and patients from Daegu and a surrounding province being transferred to other less-affected provinces. However, my _impression_ (as a public health trained reader) is that most severe cases do receive treatment at hospitals. I'm looking for more systematic data on health systems' capacity and response.  
 ```{r plotmortality, results='asis', fig.align="left", out.width="600px"}
@@ -725,9 +724,19 @@ totalcases<- dtanewcasebyday %>%
 
 latestsummary<- dtanewcasebyday %>% 
     select(date) %>% summarize_all(funs(max))
+
+dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear") %>%
+    filter(is.na(pop10)==F)  
+totalpop<-round(sum(dtapop$pop10)/1000)#in million
+totalincidence<-as.character(round(totalcases*100000/(totalpop*1000000), 0)) 
+
+totalcases<-as.character(totalcases)
+totalpop
+totalcases
+totalincidence
 ```
 
-For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. __More recently, the number of new cases started to decrease (see below). Still, as of `r latestsummary`, a total of `r totalcases` people have been infected__. 
+For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. More recently, the number of new cases started to decrease, and it appears to remain stable (see below). __Still, as of `r latestsummary`, a total of `r totalcases` people have been infected. It means `r totalincidence` people have been infected out of 100,000 population since beginning of the epidemic__. 
 
 ```{r plottrendkorea, results="asis", fig.align="left", out.width="600px"}
 dta<-dtanewcasebyday
