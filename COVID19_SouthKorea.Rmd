@@ -528,7 +528,7 @@ plot_ly(dta, x=dta$date, y=dta$mortality,
 ```
 
 _Hover over each figure to see values and more options._
-```{r plotmortalitytrend, results="asis", fig.align="left", out.width="800px"}
+```{r plotincidencetrend, results="asis", fig.align="left", out.width="800px"}
 dta<-dtabyday%>%select(date, mortality, incidence)
 #dta<-dtabyday%>%filter(mortality>0)%>%select(date, mortality, incidence)
 dta$incidence<-dta$incidence/10
