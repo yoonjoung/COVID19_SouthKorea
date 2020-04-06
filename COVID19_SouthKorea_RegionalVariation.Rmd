@@ -1,0 +1,482 @@
+---
+output:
+  html_document:
+    toc: true
+    toc_depth: 5
+    toc_float: true
+---
+```{r intro, echo=FALSE, results="hide"}
+knitr::opts_chunk$set(echo=FALSE, 
+                      message=FALSE, 
+                      comment = "", 
+                      warning=FALSE, 
+                      results="hide") 
+knitr::opts_knit$set(root.dir = "C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/")
+
+date<-as.Date(Sys.time(	), format='%d%b%Y')
+time<-Sys.time()
+
+suppressMessages(library(dplyr))
+suppressMessages(library(ggplot2))
+suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(readxl)))
+suppressMessages(library(plotly))
+suppressMessages(library(Matrix))
+
+```
+
+```{r dataByRegion}
+dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear") %>%
+    filter(is.na(pop10)==F)  
+totalpop<-round(sum(dtapop$pop10)) #total population in thousand
+
+dtapopregion<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/Citypopulation_SouthKorea.xlsx") 
+
+dtapopregion$pop=dtapopregion[,10]
+#table(dtapopregion$region)
+
+dtapopregion<-dtapopregion %>%
+    select(region, pop) %>%
+    mutate(
+        region=ifelse(region=="Seoul", "gg", region), 
+        region=ifelse(region=="Incheon", "gg", region),  
+        region=ifelse(region=="Gyeonggi-do", "gg", region),
+        region=ifelse(region=="Gangwon-do", "gw", region),
+        region=ifelse(region=="Chungcheongbuk-do", "cb", region),        
+        region=ifelse(region=="Chungcheongnam-do", "cn", region),
+        region=ifelse(region=="Daejeon", "cn", region),
+        region=ifelse(region=="Sejong", "cn", region),
+        region=ifelse(region=="Daegu", "gb", region),
+        region=ifelse(region=="Ulsan", "gb", region),
+        region=ifelse(region=="Gyeongsangbuk-do", "gb", region),
+        region=ifelse(region=="Busan", "gn", region),
+        region=ifelse(region=="Gyeongsangnam-do", "gn", region),
+        region=ifelse(region=="Jeollabuk-do", "jb", region),
+        region=ifelse(region=="Gwangju", "jn", region),
+        region=ifelse(region=="Jeollanam-do", "jn", region),
+        region=ifelse(region=="Jeju-do", "jj", region)
+    ) %>%
+    group_by(region) %>% summarize_all(funs(sum)) %>%
+    mutate(
+        total=sum(pop),
+        pct=pop/total,#pop in 1000
+        pop=totalpop*pct,#total pop from WPP 2019 revision
+        total2=sum(pop)
+        ) %>%
+    select(region, pop) %>%arrange(region)
+#head(dtapopregion, 10)
+
+dta<-as.data.frame(read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByRegion"))
+
+names(dta) <- gsub(" ", "", names(dta))
+names(dta)<- tolower(names(dta))   
+
+colnames(dta[,8:25])
+
+###make sure the region/city columns are all numeric 
+###replace missing with 0 in region/city columns 
+for (i in 8:25){
+    dta[,i]<-as.numeric(dta[,i])    
+    for (j in 1:nrow(dta)){
+        if (is.na(dta[j,i])==TRUE){
+            dta[j,i]<-0    
+        }
+    }
+}
+
+dtabyregiondetail<-dta %>%
+    mutate_each(funs(tolower), status) %>%
+    filter(metric=="cumulative cases") %>%
+    filter(status!="" & status!="shincheonji") %>%
+    mutate(
+        status=ifelse(status=="sub-total", "total", status),    
+        status=ifelse(status=="subtotal", "total", status) 
+    ) %>%
+    arrange(date, status, time) %>%
+    mutate(
+        gg=seoul+ incheon+ gyeonggi, 
+        gw=gangwon,
+        cb=chungbuk,
+        cn=daejeon+ sejong+ chungnam,   
+        gb=daegu+ ulsan+ gyeongbuk,            
+        gn=busan+ gyeongnam,            
+        jb=jeonbuk,          
+        jn=gwangju+ jeonnam,           
+        jj=jeju,             
+        airport=airportscreening, 
+        TOTAL=gg+gw+cn+cb+gb+gn+jb+jn+jj+airport
+    ) %>%
+    select(date, time, status, gg,gw,cn,cb,gb,gn,jb,jn,jj,airport, 
+           total, TOTAL)%>% 
+    group_by(date)%>%
+    mutate(
+        tworeports =sd(time)!=0, 
+        early =min(time)
+        )%>%ungroup()%>%
+    filter(tworeports==0 | (tworeports==1 & early==time))%>%
+    select(-time, -tworeports, -early, -total)%>%
+    arrange(date)
+
+### TOTAL cumulative cases
+dtabyregiontotal<-dtabyregiondetail %>% 
+    filter(status=="total") %>% select(-status) %>% arrange(date)
+
+dtabyregion<-dtabyregiontotal %>% 
+    gather(region, cases, gg:airport, convert = FALSE) %>% 
+    arrange(region, date) %>% 
+    mutate(
+        newcases=cases-lag(cases),
+        newcases=ifelse(region!=lag(region), NA, newcases )
+    )
+    
+dtabyregion<-left_join(dtabyregion, dtapopregion, by = "region") 
+
+dtabyregion<-dtabyregion %>% 
+    mutate(
+        incidence =round(100000* cases/(pop*1000), 1), #per 100000 pop
+        pctcases = round(100*cases/TOTAL, 1)#% region cases out of total
+    )
+
+### Deaths 
+dtabyregiondeaths<-dtabyregiondetail %>% 
+    filter(status=="deceased") %>% select(-status ) %>% arrange(date)%>%
+    mutate(TOTALdeaths=TOTAL)%>% select(-TOTAL )
+
+dtabyregiondeaths<-dtabyregiondeaths %>% 
+    gather(region, deaths, gg:airport, convert = FALSE) %>% 
+    arrange(region, date) 
+
+dtabyregion<-left_join(dtabyregion, dtabyregiondeaths, by = c("region", "date")) 
+
+dtabyregion<-dtabyregion %>% 
+    mutate(
+        cfr =round(100* deaths/cases, 1), #CFR %
+        region=ifelse(region=="gg", "Gyeonggi", region),
+        region=ifelse(region=="gw", "Gangwon", region),
+        region=ifelse(region=="cb", "Chungbuk", region),
+        region=ifelse(region=="cn", "Chungnam", region),
+        region=ifelse(region=="jb", "Jeonbuk", region),
+        region=ifelse(region=="jn", "Jeonnam", region),
+        region=ifelse(region=="gb", "Gyungbuk", region),
+        region=ifelse(region=="gn", "Gyungnam", region),
+        region=ifelse(region=="jj", "Jeju", region),
+        region=ifelse(region=="airport", "Airport", region)
+    )%>%
+    arrange(date, region)
+```
+
+#####__Regional variation in South Korea__ 
+
+(Updated: `r time` EDT)  
+
+---
+
+#####1. Cumulative cases by region 
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%filter(date==max(date))
+
+dtafig$region<-factor(dtafig$region, 
+                    levels = unique(dtafig$region) 
+                    [order(dtafig$cases, decreasing = TRUE)])
+
+fig1<-plot_ly(dtafig, x=~region, y=~cases, type = 'bar',
+              marker = list(color = c('rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(49,130,189)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)')))%>% 
+    layout(
+            title = c("COVID-19 cases by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of confirmed cases"), 
+            legend = list(x = 1.2, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+
+dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Gyungbuk")
+
+dtafig$region<-factor(dtafig$region, 
+                    levels = unique(dtafig$region) 
+                    [order(dtafig$cases, decreasing = TRUE)])
+
+fig2<-plot_ly(dtafig, x=~region, y=~cases, type = 'bar',
+              marker = list(color = c('rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)')))%>% 
+    layout(
+            title = c("COVID-19 cases by region - except GB"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of Confirmed cases"), 
+            legend = list(x = 1.2, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+
+subplot(fig1, fig2, nrows=1) %>%
+        layout(  title ="Cumulative cases by region: w/ vs. wo/ GB" , 
+                 showlegend = FALSE )
+
+```
+
+#####2. Cumulateive incidence by region 
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%filter(date==max(date))
+
+dtafig$region<-factor(dtafig$region, 
+                    levels = unique(dtafig$region) 
+                    [order(dtafig$incidence, decreasing = TRUE)])
+
+fig1<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
+              marker = list(color = c('rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(49,130,189)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)')))%>% 
+    layout(
+            title = c("COVID-19 incidence by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Confirmed cases per 100,000 population"), 
+            legend = list(x = 1.2, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+
+dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Gyungbuk")
+
+dtafig$region<-factor(dtafig$region, 
+                    levels = unique(dtafig$region) 
+                    [order(dtafig$incidence, decreasing = TRUE)])
+
+fig2<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
+              marker = list(color = c('rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)', 'rgb(107,174,214)')))%>% 
+    layout(
+            title = c("COVID-19 incidence by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Confirmed cases per 100,000 population"), 
+            legend = list(x = 1.2, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+
+subplot(fig1, fig2, nrows=1) %>%
+        layout(  title ="Incidence rate (per 100,000 population) by region: w/ vs. wo/ GB" , 
+                 showlegend = FALSE )
+
+```
+
+#####2.1 Cumulateive incidence trend by region 
+```{r,  results='asis', fig.align="left", out.width="800px"}
+listx<-list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=6), 
+                         tickangle=-90)
+listy<-list(range=c(0, 5))
+
+dtafig<-dtabyregion%>%filter(region=="Gyeonggi")
+figgg<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Gyeonggi")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Gangwon")
+figgw<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Gangwon")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Chungbuk")
+figcb<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Chungbuk" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Chungnam")
+figcn<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Chungnam")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Jeonbuk")
+figjb<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Jeonbuk" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Jeonnam")
+figjn<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Jeonnam")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Gyungbuk")
+figgb<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Gyungbuk")%>%
+        layout(xaxis=listx)
+
+dtafig<-dtabyregion%>%filter(region=="Gyungnam")
+figgn<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Gyungnam" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Jeju")
+figjj<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Jeju" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Airport")
+figairport<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Airport")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+subplot(figgb, figgg, figgw, figcn, figcb, figjb, figjn, figgn, figjj, 
+        nrows=3, shareX=TRUE, shareY=FALSE) %>%
+        layout(
+            title ="Trends of cumulative incidence rate (per 100,000) by region",
+            legend = list(orientation = 'h', x = 0.2) 
+            )
+```
+
+#####3. Changes in regional composition over time
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion
+plot_ly(dtafig, x=~date, y=~pctcases, type = 'bar', color= ~region )%>% 
+    layout(
+            title = c("Trend of case composition by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Percent of total cases"),
+            barmode="stack",  
+            legend = list(x = 1.05, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+```
+
+#####4. Number of new cases by region over time
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion
+plot_ly(dtafig, x=~date, y=~newcases, 
+        type = 'bar', color= ~region ) %>%
+        layout(
+            title = c("Trend of daily new confirmed COVID-19 cases by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of new confirmed cases"),
+            barmode="stack",  
+            legend = list(x = 1.05, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+```
+
+```{r,  results='asis', fig.align="left", out.width="800px"}
+listx<-list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=6), 
+                         tickangle=-90)
+listy<-list(range=c(0, 30))
+
+dtafig<-dtabyregion%>%filter(region=="Gyeonggi")
+figgg<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyeonggi")%>%
+        layout(xaxis=listx)
+
+dtafig<-dtabyregion%>%filter(region=="Gangwon")
+figgw<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gangwon")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Chungbuk")
+figcb<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Chungbuk" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Chungnam")
+figcn<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Chungnam")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Jeonbuk")
+figjb<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Jeonbuk" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Jeonnam")
+figjn<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Jeonnam")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Gyungbuk")
+figgb<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyungbuk")%>%
+        layout(xaxis=listx)
+
+dtafig<-dtabyregion%>%filter(region=="Gyungnam")
+figgn<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyungnam" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Jeju")
+figjj<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Jeju" )%>%
+        layout(xaxis=listx, yaxis=listy)
+
+dtafig<-dtabyregion%>%filter(region=="Airport")
+figairport<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Airport")%>%
+        layout(xaxis=listx, yaxis=listy)
+
+subplot(figgb, figgg, figairport, figcn, figgw, figcb, figjb, figjn, figgn, figjj, 
+        nrows=3, shareX=TRUE, shareY=FALSE) %>%
+        layout(
+            title ="Trends of new cases by region",
+            legend = list(orientation = 'h', x = 0.2) 
+            )
+
+```
+
+#####5. Number of deaths by region
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Airport")
+
+dtafig$region<-factor(dtafig$region, 
+                    levels = unique(dtafig$region) 
+                    [order(dtafig$deaths, decreasing = TRUE)])
+
+plot_ly(dtafig, x=~region, y=~deaths, type = 'bar')%>% 
+    layout(
+            title = c("COVID-19 deaths by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Number of deaths"), 
+            legend = list(x = 1.2, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+```
+
+#####6. Case fatality rate by region
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Airport")
+
+dtafig$region<-factor(dtafig$region, 
+                    levels = unique(dtafig$region) 
+                    [order(dtafig$cfr, decreasing = TRUE)])
+
+plot_ly(dtafig, x=~region, y=~cfr, type = 'bar')%>% 
+    layout(
+            title = c("COVID-19 mortality rate by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Deaths per 100 confirmed cases (%)"), 
+            legend = list(x = 1.2, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+```
+
+#####7. Trends of case fatality rate by region
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%filter(cfr>0)%>%filter(region!="Airport")
+
+plot_ly(dtafig, x=~date, y=~cfr, 
+        type = 'scatter', mode = 'lines', color= ~region ) %>%
+        layout(
+            title = c("Trend of CFR by region"),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Deaths per 100 cases (%)"),
+            legend = list(x = 1.2, y = 0.9, 
+                          title=list(text='Provinces*'))
+            )
+```
