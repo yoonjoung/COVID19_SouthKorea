@@ -318,6 +318,23 @@ All data are from press release from [KCDC](https://www.cdc.go.kr/) - available 
 
 ---
 
+#####__Q9. How are different regions affeted in the country?__
+```{r}
+incidenceGB<-dtabyregion%>%filter(date==max(date))%>%filter(region=="Gyungbuk")%>%select(incidence)%>%summarize_all(funs(mean))
+incidenceGB<-round(incidenceGB, 0)
+
+cfrGB<-dtabyregion%>%filter(date==max(date))%>%filter(region=="Gyungbuk")%>%select(cfr)%>%summarize_all(funs(mean))
+```
+
+This is one of common questions that I've received, as we see [huge variation in incidence rates across states and counties in the US](https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html#states). 
+
+In South Korea, however, __the entire country is under one same strategy for infectious diseases contol__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or mortality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). About 80% of total confirmed cases have occurred in Daegu and Gyeungbuk province. 
+
+* In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected - compared to below 6 per 100,000 population in all other regions.  
+
+* In Gyungbuk, mortality has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). Mortality is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
+
+It is notable that the outbreak in Daegu and Gyungbuk did not spread throughout the country more widely, although the country is relatively small - about the size of Kentucky or Indiana in the US. 
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(date==max(date))
 
@@ -325,7 +342,7 @@ dtafig$region<-factor(dtafig$region,
                     levels = unique(dtafig$region) 
                     [order(dtafig$cases, decreasing = TRUE)])
 
-fig1<-plot_ly(dtafig, x=~region, y=~cases, type = 'bar',
+fignewcases<-plot_ly(dtafig, x=~region, y=~cases, type = 'bar',
               marker = list(color = c('rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(244,165,130)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)')))%>% 
     layout(
             title = c("COVID-19 cases by region"),
@@ -345,7 +362,7 @@ dtafig$region<-factor(dtafig$region,
                     levels = unique(dtafig$region) 
                     [order(dtafig$incidence, decreasing = TRUE)])
 
-fig2<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
+figincidencerate<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
               marker = list(color = c('rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(244,165,130)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)')))%>% 
     layout(
             title = c("COVID-19 incidence by region"),
@@ -362,44 +379,47 @@ fig2<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
 #knitr::include_graphics("KCDC_case_trends_daegu_gb.png")
 ```
 
-```{r}
-subplot(fig1, fig2, nrows=1) %>%
-        layout(  title ="Total number of cases and cumulative incidence rate by region", 
+```{r plotbyregionincidence, results='asis', fig.align="left", out.width="800px"}
+subplot(fignewcases, figincidencerate, nrows=1) %>%
+        layout(  title ="Total number of cases and cumulative incidence rate by province", 
                  showlegend = FALSE )
 ```
+(Note: special cities are included in provinces where they are located. Daegu is included in Gyungbuk province. Seoul and Inchon are included in Gyeonggi province. Busan is included in Gyungnam province.)
 
-```{r,  results='asis', fig.align="left", out.width="800px"}
-dtafig<-dtabyregion%>%filter(cfr>0)
+```{r plotbyregionmortality, results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%
+    select(date, region, deaths, cases)%>% 
+    filter(region!="Airport")%>%
+    mutate(
+        region3="Gyungbuk",
+        region3=ifelse(region=="Gyeonggi", "Gyeonggi", region3),
+        region3=ifelse(region!="Gyungbuk" & region!="Gyeonggi", "Gangwon & Gyungnam", region3)
+    )%>%
+    group_by(date, region3)%>%
+    mutate(
+        cases=sum(cases),
+        deaths=sum(deaths)
+    )%>%ungroup()%>%
+    mutate(cfr=round(100*deaths/cases, 1))%>%
+    arrange(date, region3, region)%>%
+    filter(region3!=lag(region3))
 
-fig1<-plot_ly(dtafig, x=~date, y=~cfr, 
-        type = 'scatter', mode = 'lines', color= ~region , 
-        colors = c("dodgerblue3", "blue", "red",  "dodgerblue1") ) %>%
+plot_ly(dtafig, x=~date, y=~cfr, 
+        type = 'scatter', mode = 'lines', color= ~region3 ,
+        colors = c("dodgerblue3", "blue", "red")) %>%
         layout(
-            title = c("Trend of COVID-19 mortality by region"),
+            title = c("Trend of case fatality rates by province"),
             xaxis = list(title = "Date",  
                          autotick = FALSE,
                          showticklabels = TRUE, 
                          tickfont = list(size=10), 
                          tickangle=-90),
             yaxis = list(title = "Deaths per 100 cases (%)"),
-            legend = list(x = 0.8, y = 0.9, 
+            legend = list(x = 0.1, y = 0.7, 
                           title=list(text='Provinces*'))
             )
-
-dtafig<-dtabyregion%>%filter(region!="Airport")%>%
-    select(date, region, cases, deaths)%>%
-    mutate(region3="Other",
-           region3=ifelse(region=="Gyeonggi","Gyeonggi",region3),
-           region3=ifelse(region=="Gyungbuk","Gyungbuk",region3))%>%
-    select(-region)%>%
-    group_by(date, region3)%>%summarize_all(funs(sum))%>%
-    mutate(cfr =round(100* deaths/cases, 1))
 ```
-
-```{r}
-plot_ly(dtafig, x=~date, y=~cfr, 
-        type = 'scatter', mode = 'lines', color= ~region3)
-```
+(Note: special cities are included in provinces where they are located. Daegu is included in Gyungbuk province. Seoul and Inchon are included in Gyeonggi province. Busan is included in Gyungnam province. Gangwon has a small number of confirmed cases and was combined with Gyungnam.)
 
 #####__Q 8. Is it spreading faster in some age groups than others?__ 
 ```{r}
@@ -716,7 +736,7 @@ mortalityrate<-round(totaldeaths*100 / totalcases, 1)
 
 Among those who have COVID, __mortality rate among the elderly with COVID is very high: `r mortality80`% for those who are 80 or older, and `r mortality70`% for those who are between 70-79__. 
 
-Again, this is the case _under a very aggressive trace-test-isolate strategy_, but with no nation wide lock down. As of `r latestbyage`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. These rates - overall as well as by age group - are lower than [mortality rates in China](https://www.who.int/docs/default-source/coronaviruse/who-china-joint-mission-on-covid-19-final-report.pdf) (3.8% among all age groups and 21.9% among those 80 and older, as of 20 February, 2020). 
+Again, this is the case _under a very aggressive trace-test-isolate strategy_, but with no nation wide lock down. As of `r latestbyage`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. 
 
 There are news articles about extremely over-burdened health systems especially in Daegu. I've read a few mortality case on the newspaper while he/she was waiting for hospital admission, and patients from Daegu and a surrounding province being transferred to other less-affected provinces. However, my _impression_ (as a public health trained reader) is that most severe cases do receive treatment at hospitals. I'm looking for more systematic data on health systems' capacity and response.  
 ```{r plotmortality, results='asis', fig.align="left", out.width="600px"}
@@ -787,7 +807,7 @@ totalcases
 totalincidence
 ```
 
-For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. More recently, the number of new cases started to decrease, and it appears to remain stable (see below). __Still, as of `r latestsummary`, a total of `r totalcases` people have been infected. It means `r totalincidence` people have been infected out of 100,000 population since beginning of the epidemic__. 
+For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. __More recently, the number of new cases started to decrease, and it appears to remain stable (see below).__ Still, as of `r latestsummary`, a total of `r totalcases` people have been infected. It means __`r totalincidence` people have been infected out of 100,000 population since beginning of the epidemic__. 
 
 ```{r plottrendkorea, results="asis", fig.align="left", out.width="600px"}
 dta<-dtanewcasebyday
