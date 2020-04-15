@@ -318,7 +318,7 @@ All data are from press release from [KCDC](https://www.cdc.go.kr/) - available 
 
 ---
 
-#####__Q9. How are different regions affeted in the country?__
+#####__Q 9. How are different regions affected in the country?__
 ```{r}
 incidenceGB<-dtabyregion%>%filter(date==max(date))%>%filter(region=="Gyungbuk")%>%select(incidence)%>%summarize_all(funs(mean))
 incidenceGB<-round(incidenceGB, 0)
@@ -335,7 +335,74 @@ In South Korea, however, __the entire country is under one same strategy for inf
 * In Gyungbuk, mortality has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). Mortality is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
 
 It is notable that the outbreak in Daegu and Gyungbuk did not spread throughout the country more widely, although the country is relatively small - about the size of Kentucky or Indiana in the US. 
-```{r,  results='asis', fig.align="left", out.width="800px"}
+
+```{r plotbyregion, results="asis", fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%filter(date==max(date))
+
+dtafig$region<-factor(dtafig$region, 
+                    levels = unique(dtafig$region) 
+                    [order(dtafig$incidence, decreasing = TRUE)])
+
+figincidencerate<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
+              name= "Province", marker = list(color = c('rgb(146,197,222)',  'rgb(146,197,222)', 'rgb(146,197,222)',"blue",  "red", 'rgb(146,197,222)','rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)')))%>% 
+    layout(
+            annotations = list(x = 0.2 , y = 0.95, 
+                               text = "<b>COVID-19 incidence by region</b>", 
+                               showarrow = F, xref='paper', yref='paper'),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Confirmed cases per 100,000 population") 
+            
+            )
+
+
+dtafig<-dtabyregion%>%
+    select(date, region, deaths, cases)%>% 
+    filter(region!="Airport")%>%
+    mutate(
+        region3="Gyungbuk",
+        region3=ifelse(region=="Gyeonggi", "Gyeonggi", region3),
+        region3=ifelse(region!="Gyungbuk" & region!="Gyeonggi", "Gangwon & Gyungnam", region3)
+    )%>%
+    group_by(date, region3)%>%
+    mutate(
+        cases=sum(cases),
+        deaths=sum(deaths)
+    )%>%ungroup()%>%
+    mutate(cfr=round(100*deaths/cases, 1))%>%
+    arrange(date, region3, region)%>%
+    filter(region3!=lag(region3))
+
+figcfr<-plot_ly(dtafig, x=~date, y=~cfr, 
+        type = 'scatter', mode = 'lines', color= ~region3 ,
+        colors = c("dodgerblue3", "blue", "red")) %>%
+        layout(
+            annotations = list(x = 0.1 , y = 0.95, 
+                               text = "<b>Trend of case fatality rates by province</b>", 
+                               showarrow = F, xref='paper', yref='paper', xanchor = 'left'),
+            xaxis = list(title = "Date",  
+                         autotick = FALSE,
+                         showticklabels = TRUE, 
+                         tickfont = list(size=10), 
+                         tickangle=-90),
+            yaxis = list(title = "Deaths per 100 cases (%)"),
+            legend = list(x = 0.55, y = 0.90)
+            )
+
+subplot(style(figincidencerate, showlegend = FALSE), 
+        style(figcfr, 
+              annotations= list(x = 0.55, y = 0.95, xanchor = 'left'), 
+              legend = list(x = 0.55, y = 0.90)),
+            nrows=1, shareY = FALSE, titleY = TRUE)
+
+```
+(Note: special cities are included in provinces where they are located. Daegu is included in Gyungbuk province. Seoul and Inchon are included in Gyeonggi province. Busan is included in Gyungnam province. Gangwon has a small number of confirmed cases and was combined with Gyungnam.)
+
+```{r plotbyregionincidence, fig.align="left", out.width="800px"}
+
 dtafig<-dtabyregion%>%filter(date==max(date))
 
 dtafig$region<-factor(dtafig$region, 
@@ -377,16 +444,13 @@ figincidencerate<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
             )
 
 #knitr::include_graphics("KCDC_case_trends_daegu_gb.png")
-```
 
-```{r plotbyregionincidence, results='asis', fig.align="left", out.width="800px"}
 subplot(fignewcases, figincidencerate, nrows=1) %>%
         layout(  title ="Total number of cases and cumulative incidence rate by province", 
                  showlegend = FALSE )
 ```
-(Note: special cities are included in provinces where they are located. Daegu is included in Gyungbuk province. Seoul and Inchon are included in Gyeonggi province. Busan is included in Gyungnam province.)
 
-```{r plotbyregionmortality, results='asis', fig.align="left", out.width="800px"}
+```{r plotbyregionmortality, fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%
     select(date, region, deaths, cases)%>% 
     filter(region!="Airport")%>%
@@ -419,7 +483,6 @@ plot_ly(dtafig, x=~date, y=~cfr,
                           title=list(text='Provinces*'))
             )
 ```
-(Note: special cities are included in provinces where they are located. Daegu is included in Gyungbuk province. Seoul and Inchon are included in Gyeonggi province. Busan is included in Gyungnam province. Gangwon has a small number of confirmed cases and was combined with Gyungnam.)
 
 #####__Q 8. Is it spreading faster in some age groups than others?__ 
 ```{r}
@@ -439,7 +502,7 @@ So, we know about the age-pattern of mortality (i.e., higher in older ages, see 
 In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0321` on March 21st, and __`r incidence80_latest` on `r date`__. The increase around mid-late March reflects [outbreaks in nursing homes](https://www.scmp.com/week-asia/health-environment/article/3075937/coronavirus-nursing-homes-emerge-south-koreas-new). But, __it is also notable that infection rate among the 20s has increased steadily since late March__ - which may be due to 'imported cases' among Koreans returning from overseas (this can be confirmed if age breakdown among those imported cases is available).  
 
 _Hover over each figure to see values and more options._
-```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="600px"}
+```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="700px"}
 
 dtasorted<-dtabyage %>%
     select(date, age, incidence) %>%
@@ -554,9 +617,9 @@ dta<-dtabyday%>%select(date, mortality, incidence)
 dta$incidence<-dta$incidence/10
 
 plot_ly(dta, x=dta$date, y=dta$incidence, 
-        type = 'bar', name="Incidence (per million population)",
+        type = 'bar', name="Incidence rate (per million population)",
         marker = list(color = "rgb(204,204,204)")) %>%
-        add_trace(y = ~mortality, name = "Mortality (per 100 cases)" ,
+        add_trace(y = ~mortality, name = "Case fatality rate (per 100 cases)" ,
                   marker = list(color = "rgb(253,141,60)")) %>%
         layout(
             title = "Trends of cumulative incidence and mortality by day",
@@ -566,7 +629,7 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
                          tickangle=-90),
-            legend = list(orientation = 'h')
+            legend = list(orientation = 'v',x = 0.1, y = 0.9) 
             )
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
@@ -624,15 +687,25 @@ fig80<-plot_ly(dta80, x=~date, y=~mortality,
        layout(xaxis = xaxislist,
               yaxis = yaxislist)
 
-fig <- subplot(fig50, fig60, fig70, fig80) %>%
+subplot(fig50, fig60, fig70, fig80, shareY = TRUE) %>%
         layout(
             title ="Trends of cumulative mortality by age group",
             yaxis = list(title = "Morality (per 100 confirmed cases)",
-                         titlefont=list(size=10)), 
-            legend = list(orientation = 'h', x = 0.2) 
+                         titlefont=list(size=10)),
+            legend=list(orientation = "h", x = 0.2, y=0.8)
             )
 
-fig
+fig<-subplot(style(fig50, legend = list(x = 0.15, y = 0.90)),
+        style(fig60, legend = list(x = 0.15, y = 0.90)),
+        style(fig70, legend = list(x = 0.55, y = 0.90)),
+        style(fig80, legend = list(x = 0.15, y = 0.90)) 
+        )%>%
+        layout(
+            title ="Trends of cumulative mortality by age group",
+            yaxis = list(title = "Morality (per 100 confirmed cases)",
+                         titlefont=list(size=10))
+            )
+
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))   
 _Note_: Age-specific mortality data were first released on March, 3rd, and it has been updated daily since March 11th. 
@@ -713,7 +786,8 @@ plot_ly(dta, x=dta$date, y=dta$test,
                          tickfont = list(size=6), 
                          tickangle=-90
                          ),
-            yaxis = list(title = "Number of tests"))
+            yaxis = list(title = "Number of tests"),
+            legend=list(x = 0.1, y = 0.9))
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030). The number of tests is calculated based on the daily increase in the total number of tests reported.)
 
@@ -766,7 +840,7 @@ incidence20<-dtabyage%>%filter(latest==TRUE & age==20)%>%
 
 For this question, let's look at the total cumulative number of confirmed cases since the outbreak _per 100,000 population_ by age group, not the absolute number. Also, keep in your mind, this is what we see _under a very aggressive trace-test-isolate strategy_ (see [this](https://www.washingtonpost.com/world/asia_pacific/coronavirus-test-kits-south-korea-us/2020/03/13/007f14fc-64a1-11ea-8a8e-5c5336b32760_story.html) and [this](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true)). Finally, KCDC releases the number by 10-year age group, and I'm following that categorization.  
 
-* Incidence rate is substantially high in the 20s: `r incidence20` people have been infected per 100,000 population in their 20s. At least partially, this is reflection of a [very concentrated epidemic in Daegu related to a church](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html), and the age pattern among the church attendants. So this age pattern may not be relevant for more generalized pandemic situation.   
+* Incidence rate is substantially high in the 20s: __`r incidence20` people have been infected per 100,000 population in their 20s__. At least partially, this is reflection of a [very concentrated epidemic in Daegu related to a church](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html), and the age pattern among the church attendants. So this age pattern may not be relevant for more generalized pandemic situation.   
 * Incidence rate among those under 20 is low. It may indicate either children are less susceptible, and/or - more importantly - they have been protected at home since all Korean schools have been in long winter break (typically over several weeks) or under temporary closure since the end of December, 2019.  
 
 ```{r plotincidence, results='asis', fig.align="left", out.width="600px"}
@@ -809,7 +883,7 @@ totalincidence
 
 For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. __More recently, the number of new cases started to decrease, and it appears to remain stable (see below).__ Still, as of `r latestsummary`, a total of `r totalcases` people have been infected. It means __`r totalincidence` people have been infected out of 100,000 population since beginning of the epidemic__. 
 
-```{r plottrendkorea, results="asis", fig.align="left", out.width="600px"}
+```{r plottrendkorea, results="asis", fig.align="left", out.width="800px"}
 dta<-dtanewcasebyday
 
 plot_ly(dta, x=dta$date, y=dta$newconfirmedcases, 

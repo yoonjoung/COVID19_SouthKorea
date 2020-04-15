@@ -467,7 +467,8 @@ plot_ly(dtafig, x=~region, y=~cfr, type = 'bar')%>%
 dtafig<-dtabyregion%>%filter(cfr>0)%>%filter(region!="Airport")
 
 plot_ly(dtafig, x=~date, y=~cfr, 
-        type = 'scatter', mode = 'lines', color= ~region ) %>%
+        type = 'scatter', mode = 'lines', color= ~region, 
+        colors = c("dodgerblue3", "blue", "red",  "dodgerblue1")) %>%
         layout(
             title = c("Trend of CFR by region"),
             xaxis = list(title = "Date",  
@@ -476,7 +477,7 @@ plot_ly(dtafig, x=~date, y=~cfr,
                          tickfont = list(size=10), 
                          tickangle=-90),
             yaxis = list(title = "Deaths per 100 cases (%)"),
-            legend = list(x = 1.2, y = 0.9, 
+            legend = list(x = 0.1, y = 0.7, 
                           title=list(text='Provinces*'))
             )
 ```
