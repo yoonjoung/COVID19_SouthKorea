@@ -36,6 +36,8 @@ dtanewcasebyday<-dta %>%
     filter(is.na(date)==F) %>%
     select(Date_PressRelease, date, newconfirmedcases) %>%
     mutate(date=as.Date(date))
+
+write.csv(dtanewcasebyday, "KCOVID/dtanewcasebyday.csv")
 ```
 
 ```{r dataByAgeSex}
@@ -75,6 +77,9 @@ dtabyage<-left_join(dtabyage, dtapop, by = "age") %>%
         latest=date==max(date), 
         initial=date==min(date) 
         ) 
+
+#export to CSV for the paper 
+write.csv(dtabyage, "KCOVID/dtabyage.csv")
 ```
 
 ```{r dataSummaryByDay}
@@ -105,6 +110,9 @@ dtabyday<-dta %>%
         mortality=round(100*confirmed_deceased / confirmed_total, 1), #cumulative CFR (%)
         incidence=round(100*confirmed_total/totalpop, 1) #cumulative incidence per 100,000 population 
         )
+
+#export to CSV for the paper 
+write.csv(dtabyday, "KCOVID/dtabyday.csv")
 ```
 
 ```{r dataPediatricCases}
@@ -219,6 +227,7 @@ for (i in 8:25){
     }
 }
 
+
 dtabyregiondetail<-dta %>%
     mutate_each(funs(tolower), status) %>%
     filter(metric=="cumulative cases") %>%
@@ -226,8 +235,13 @@ dtabyregiondetail<-dta %>%
     mutate(
         status=ifelse(status=="sub-total", "total", status),    
         status=ifelse(status=="subtotal", "total", status) 
-    ) %>%
-    arrange(date, status, time) %>%
+    ) 
+
+#export to CSV for the paper
+write.csv(dtabyregiondetail, "KCOVID/dtabyregiondetail.csv")
+
+dtabyregiondetail<-dtabyregiondetail %>%
+    arrange(date, status, time)%>%
     mutate(
         gg=seoul+ incheon+ gyeonggi, 
         gw=gangwon,
@@ -298,6 +312,9 @@ dtabyregion<-dtabyregion %>%
         region=ifelse(region=="airport", "Airport", region)
     )%>%
     arrange(date, region)
+
+#export to CSV for the paper 
+write.csv(dtabyregion, "KCOVID/dtabyregion.csv")
 ```
 
 #####__COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
@@ -773,21 +790,33 @@ testrate<-round(max(dtabyday$total)/sum(dtapop$pop10))
 Very aggressive. As of `r latesttest`, a total of `r totaltest` thousand people have been tested. There are `r totalpop` million people in the country, and __`r testrate` in every 1000 people__ have been test. This is [one of the highest cumulative testing rates in the world](https://ourworldindata.org/covid-testing). Epidemiological investigation of the case No. 31 (who was confirmed on February 18th) prompted immediate and massive testing in Daegu and nation wide.  
 
 ```{r plottest, results="asis", fig.align="left", out.width="800px"}
-dta<-left_join(dtabyday, dtanewcasebyday, by = "date") 
+dta<-left_join(dtabyday, dtanewcasebyday, by = "date")
 
-plot_ly(dta, x=dta$date, y=dta$test, 
+fig<-plot_ly(dta, x=dta$date, y=dta$test, 
         type = 'bar', name='All tests' ) %>%
         add_trace(y=dta$newconfirmedcases, name = 'Positive tests') %>%
         layout(
             title = "Number of tests by day",
-            xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=6), 
-                         tickangle=-90
-                         ),
+            xaxis = list(title = "Date", 
+                         tickfont = list(size=10)),
             yaxis = list(title = "Number of tests"),
             legend=list(x = 0.1, y = 0.9))
+
+plot_ly(dta, x=dta$date, y=dta$test, 
+        type = 'bar', name='All tests', offsetgroup=1, 
+        marker=list(color ="#8DB9D9")) %>%
+        add_trace(y=dta$newconfirmedcases, name = 'Positive tests', marker=list(color ="#1F77B4"), type = 'bar', offsetgroup=2, yaxis='y2' ) %>%    
+        layout(
+            title = "Number of tests and confirmed cases by day",
+            xaxis = list(title = "Date",  
+                         tickfont = list(size=10)),
+            yaxis = list(title = "Number of all tests"),
+            yaxis2 = list(overlaying='y',side="right",
+                          title = "Number of confirmed cases"),
+            barmode='group',
+            margin = list(b = 100, r=100),
+            legend=list(x = 0.1, y = 0.9))
+
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030). The number of tests is calculated based on the daily increase in the total number of tests reported.)
 
