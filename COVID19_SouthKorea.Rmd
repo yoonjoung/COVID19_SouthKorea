@@ -928,12 +928,6 @@ plot_ly(dta, x=dta$date, y=dta$newconfirmedcases,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)
 
-In Daegu (where the majority of confirmed cases are concentrated) and Gyeongbuk (the province surrounding Daegu), the daily number of new cases has decreased clearly. 
-```{r plottrenddaegu, results="asis", fig.align="left", out.width = "600px"}
-knitr::include_graphics("KCDC_case_trends_daegu_gb.png")
-```
-(__Source__: Figure from KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), _"Updates on COVID-19 in Korea (as of 4 April)"_)
-
 #####__Q 1. When did it start?__ 
 
 On January 20, 2020, there was the first laboratory confirmed COVID case. 
