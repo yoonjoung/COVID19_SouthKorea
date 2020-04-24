@@ -274,7 +274,7 @@ listx<-list(title = "Date",
                          showticklabels = TRUE, 
                          tickfont = list(size=6), 
                          tickangle=-90)
-listy<-list(range=c(0, 5))
+listy<-list(range=c(0, 7))
 
 dtafig<-dtabyregion%>%filter(region=="Gyeonggi")
 figgg<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Gyeonggi")%>%
@@ -302,7 +302,7 @@ figjn<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Jeonnam")%>%
 
 dtafig<-dtabyregion%>%filter(region=="Gyungbuk")
 figgb<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Gyungbuk")%>%
-        layout(xaxis=listx)
+        layout(xaxis=listx, yaxis=list(range=c(0, 150)))
 
 dtafig<-dtabyregion%>%filter(region=="Gyungnam")
 figgn<-plot_ly(dtafig, x=~date, y=~incidence, type = 'bar', name="Gyungnam" )%>%

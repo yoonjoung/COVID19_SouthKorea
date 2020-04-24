@@ -37,7 +37,7 @@ dtanewcasebyday<-dta %>%
     select(Date_PressRelease, date, newconfirmedcases) %>%
     mutate(date=as.Date(date))
 
-write.csv(dtanewcasebyday, "KCOVID/dtanewcasebyday.csv")
+write.csv(dtanewcasebyday, "KCOVID/KCDC_data_exported/dtanewcasebyday.csv")
 ```
 
 ```{r dataByAgeSex}
@@ -79,7 +79,7 @@ dtabyage<-left_join(dtabyage, dtapop, by = "age") %>%
         ) 
 
 #export to CSV for the paper 
-write.csv(dtabyage, "KCOVID/dtabyage.csv")
+write.csv(dtabyage, "KCOVID/KCDC_data_exported/dtabyage.csv")
 ```
 
 ```{r dataSummaryByDay}
@@ -112,7 +112,7 @@ dtabyday<-dta %>%
         )
 
 #export to CSV for the paper 
-write.csv(dtabyday, "KCOVID/dtabyday.csv")
+write.csv(dtabyday, "KCOVID/KCDC_data_exported/dtabyday.csv")
 ```
 
 ```{r dataPediatricCases}
@@ -238,7 +238,7 @@ dtabyregiondetail<-dta %>%
     ) 
 
 #export to CSV for the paper
-write.csv(dtabyregiondetail, "KCOVID/dtabyregiondetail.csv")
+write.csv(dtabyregiondetail, "KCOVID/KCDC_data_exported/dtabyregiondetail.csv")
 
 dtabyregiondetail<-dtabyregiondetail %>%
     arrange(date, status, time)%>%
@@ -314,7 +314,7 @@ dtabyregion<-dtabyregion %>%
     arrange(date, region)
 
 #export to CSV for the paper 
-write.csv(dtabyregion, "KCOVID/dtabyregion.csv")
+write.csv(dtabyregion, "KCOVID/KCDC_data_exported/dtabyregion.csv")
 ```
 
 #####__COVID-19 in South Korea - and potential implications for us (wherever we are)__ 
@@ -589,6 +589,15 @@ fig<-dta %>% group_by(agegroup) %>%
 fig
 #(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030))   
 #_Note_: Age-specific data were first released on March, 3rd, and it has been updated daily since March 11th. 
+
+
+dtaforpaper <- dtabyage%>%filter(latest==TRUE)%>%
+    select(age, agegroup, confirmedcases, pop10, incidence)
+    
+View(dtaforpaper)    
+
+
+
 ```
 
 #####__Q 7.1. How has mortality changed over time?__ 
@@ -640,7 +649,7 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
                   marker = list(color = "rgb(253,141,60)")) %>%
         layout(
             title = "Trends of cumulative incidence and mortality by day",
-            yaxis = list(title=""),  
+            yaxis = list(title="", range=c(0, 2.5)),  
             xaxis = list(  
                          autotick = FALSE,
                          showticklabels = TRUE, 
@@ -890,6 +899,7 @@ plot_ly(dta, x=dta$agegroup, y=dta$incidence,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestbyage`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
+
 #####__Q 2. How fast has it been spreading?__ 
 
 ```{r}
@@ -920,14 +930,31 @@ plot_ly(dta, x=dta$date, y=dta$newconfirmedcases,
         layout(
             title = "Trends of new confirmed COVID-19 cases per day",
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
+                         autotick = TRUE,
                          showticklabels = TRUE, 
-                         tickfont = list(size=6), 
+                         tickfont = list(size=10), 
                          tickangle=-90),
             yaxis = list(title = "Number of new confirmed cases"))
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)
 
+```{r plottrendkoreaPAPER, fig.align="left", out.width="800px"}
+dta<-dtanewcasebyday
+
+plot_ly(dta, x=dta$date, y=dta$newconfirmedcases, 
+        type = 'bar' )%>%
+    add_annotations(
+        text = "test annotation",
+        x = 0.5, y = 0.9, xref = "paper", yref = "paper",    
+        xanchor = "center", yanchor = "bottom", 
+        showarrow = FALSE, font = list(size = 10) ) %>%
+    layout(
+        xaxis = list(title = "Date",  
+                     autotick = TRUE,
+                     showticklabels = TRUE, 
+                     tickfont = list(size=10)),
+            yaxis = list(title = "Number of new confirmed cases"))
+```
 #####__Q 1. When did it start?__ 
 
 On January 20, 2020, there was the first laboratory confirmed COVID case. 
