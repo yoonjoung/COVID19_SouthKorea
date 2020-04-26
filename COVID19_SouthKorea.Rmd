@@ -22,6 +22,7 @@ suppressWarnings(suppressMessages(library(tidyverse)))
 suppressWarnings(suppressMessages(library(readxl)))
 suppressMessages(library(plotly))
 suppressMessages(library(Matrix))
+suppressWarnings(suppressMessages(library(zoo)))
 
 ```
 
@@ -405,7 +406,7 @@ figcfr<-plot_ly(dtafig, x=~date, y=~cfr,
                          showticklabels = TRUE, 
                          tickfont = list(size=10), 
                          tickangle=-90),
-            yaxis = list(title = "Deaths per 100 cases (%)"),
+            yaxis = list(title = "Deaths per 100 cases (%)", range=c(0, 3.5)),
             legend = list(x = 0.55, y = 0.90)
             )
 
@@ -660,6 +661,8 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
+
+
 #####__Q 7.2. How has mortality changed over time, by age group?__ 
 
 ```{r}
@@ -899,7 +902,6 @@ plot_ly(dta, x=dta$agegroup, y=dta$incidence,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestbyage`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
-
 #####__Q 2. How fast has it been spreading?__ 
 
 ```{r}
@@ -938,23 +940,6 @@ plot_ly(dta, x=dta$date, y=dta$newconfirmedcases,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)
 
-```{r plottrendkoreaPAPER, fig.align="left", out.width="800px"}
-dta<-dtanewcasebyday
-
-plot_ly(dta, x=dta$date, y=dta$newconfirmedcases, 
-        type = 'bar' )%>%
-    add_annotations(
-        text = "test annotation",
-        x = 0.5, y = 0.9, xref = "paper", yref = "paper",    
-        xanchor = "center", yanchor = "bottom", 
-        showarrow = FALSE, font = list(size = 10) ) %>%
-    layout(
-        xaxis = list(title = "Date",  
-                     autotick = TRUE,
-                     showticklabels = TRUE, 
-                     tickfont = list(size=10)),
-            yaxis = list(title = "Number of new confirmed cases"))
-```
 #####__Q 1. When did it start?__ 
 
 On January 20, 2020, there was the first laboratory confirmed COVID case. 
@@ -967,3 +952,97 @@ See [GitHub](https://github.com/yoonjoung/COVID19_SouthKorea) for data, code, an
 For typos, errors, and questions, contact me at [www.isquared.global]("https://www.isquared.global/YJ")</p>
 
 _Making Data Delicious, One Byte at a Time_, in good times and bad times.
+
+
+```{r plotPAPER1, fig.align="left", out.width="800px"}
+#results="asis", 
+dtafig<-left_join(dtabyday, dtanewcasebyday, by = "date")%>%
+    arrange(date)%>%
+    mutate(
+        newcasessmooth =c(NA,NA,NA,rollmean(newconfirmedcases, 7),NA,NA,NA),
+        newcasessmooth =round(newcasessmooth , 1)
+    )
+
+plot_ly(dtafig, x=~date, y=~incidence, 
+        type="bar", name='Incidence rate', 
+        marker = list(color = "lightgray"), opacity = 0.7) %>%
+    add_bars(y=~newcasessmooth, 
+        name = 'New cases',
+        marker = list(color = "#1F77B4"), opacity = 0.3,
+        yaxis='y2') %>%
+    add_segments(x = as.Date("2020-02-23"), xend = as.Date("2020-04-24"), 
+                 y = 136.7, yend = 136.7,yaxis='y2', 
+                 marker = list(color = "#1F77B4",opacity = 0.3,size = 2),
+                 line= list(color = "#1F77B4"),
+                 showlegend=FALSE)%>%
+    add_annotations(x = as.Date("2020-04-05"), y = 5, yaxis='y1',
+                    showarrow = FALSE, 
+                    font = list(color = "#1F77B4",size = 15),
+                    text="New cases at the level" )%>%        
+    add_annotations(x = as.Date("2020-04-05"), y = 4, yaxis='y1',
+                    showarrow = FALSE, 
+                    font = list(color = "#1F77B4",size = 15),
+                    text="as of February 23, 2020")%>%        
+    layout(
+            title = "",
+            xaxis = list(title = "", tickfont = list(size=10)),
+                        range=c(as.Date("2020-01-20"), as.Date("2020-04-24")), 
+            yaxis = list(title = "Incidence rate (per 100,000 population)", range=c(0, 25)),
+            yaxis2 = list(overlaying='y',side="right",
+                      title = "Daily new cases", range=c(0, 1100)),
+            legend=list(x = 0.1, y = 0.9),
+            margin = list(r=50) )
+```
+
+```{r plotPAPER2, fig.align="left", out.width="800px"}
+#results="asis", 
+dtasorted<-dtabyage %>%
+    select(date, age, incidence) %>%
+    mutate(
+        age=paste0("incidence",age)
+    ) %>%
+    arrange(date, age)
+#head(dtasorted, 15)
+
+dta<-dtasorted %>% 
+    spread(age, incidence, fill = NA, convert = FALSE) 
+#head(dta, 20)
+#str(dta)
+
+plot_ly(dta, x=~date, y=~incidence0, name = "0-9", 
+               type = 'scatter', mode='lines',
+               line = list(color = c( "rgb(204,236,230)"))) %>% 
+    add_trace(y = ~incidence10, name = "10-19", line = list(color = c( "rgb(153,216,201)"))) %>% 
+    add_trace(y = ~incidence20, name = "20-29", line = list(color = c( "rgb(102,194,164)"))) %>% 
+    add_trace(y = ~incidence30, name = "30-39", line = list(color = c( "rgb(65,174,118)"))) %>% 
+    add_trace(y = ~incidence40, name = "40-49", line = list(color = c( "rgb(35,139,69)"))) %>% 
+    add_trace(y = ~incidence50, name = "50-59", line = list(color = c( "rgb(0,109,44)"))) %>% 
+    add_trace(y = ~incidence60, name = "60-69", line = list(color = c( "rgb(0,68,27)"))) %>% 
+    add_trace(y = ~incidence70, name = "70-79", line = list(color = c( "rgb(33,113,18)"))) %>% 
+    add_trace(y = ~incidence80, name = "80+", line = list(color = c( "rgb(239,59,44)"))) %>% 
+    layout(
+        yaxis = list(title = "Confirmed cases per 100,000 population",
+                     titlefont=list(size=12)), 
+        xaxis = list(title = ""), 
+        legend = list(font=list(size=10)) 
+        ) 
+
+
+```
+
+```{r plotPAPER3, out.width="800px"}
+#results="asis", 
+dtafig<-dtabyday
+
+plot_ly(dtafig, x=~date, y=~test, type = 'bar' )%>%
+    add_annotations(x = as.Date("2020-02-18"), y = 5, 
+                    showarrow = FALSE, 
+                    font = list(color = "black",size = 15),
+                    text="Case number 31" )%>%        
+    layout(
+        xaxis = list(title = "Date",  
+                     autotick = TRUE,
+                     showticklabels = TRUE, 
+                     tickfont = list(size=10)),
+            yaxis = list(title = "Number of tests per day"))
+```
