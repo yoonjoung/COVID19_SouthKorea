@@ -368,10 +368,7 @@ figincidencerate<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
                                text = "<b>COVID-19 incidence by region</b>", 
                                showarrow = F, xref='paper', yref='paper'),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)), 
             yaxis = list(title = "Confirmed cases per 100,000 population") 
             
             )
@@ -402,10 +399,7 @@ figcfr<-plot_ly(dtafig, x=~date, y=~cfr,
                                text = "<b>Trend of case fatality rates by province</b>", 
                                showarrow = F, xref='paper', yref='paper', xanchor = 'left'),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Deaths per 100 cases (%)", range=c(0, 3.5)),
             legend = list(x = 0.55, y = 0.90)
             )
@@ -492,10 +486,7 @@ plot_ly(dtafig, x=~date, y=~cfr,
         layout(
             title = c("Trend of case fatality rates by province"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Deaths per 100 cases (%)"),
             legend = list(x = 0.1, y = 0.7, 
                           title=list(text='Provinces*'))
@@ -629,9 +620,7 @@ plot_ly(dta, x=dta$date, y=dta$mortality,
         layout(
             title = "Trends of mortality among confirmed COVID-19 cases",
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=6), 
+                         tickfont = list(size=10), 
                          tickangle=-90),
             yaxis = list(title = "Mortality per 100 COVID-19 cases (all age groups)")
             )
@@ -652,10 +641,7 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
             title = "Trends of cumulative incidence and mortality by day",
             yaxis = list(title="", range=c(0, 2.5)),  
             xaxis = list(  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=6), 
-                         tickangle=-90),
+                         tickfont = list(size=10)), 
             legend = list(orientation = 'v',x = 0.1, y = 0.9) 
             )
 ```
@@ -691,12 +677,8 @@ dta60<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="60-69")
 dta70<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="70-79")
 dta80<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="80+")
 
-xaxislist<-list(title = "Date",  
-                             autotick = FALSE,
-                             showticklabels = TRUE, 
-                             tickfont = list(size=8), 
-                             tickangle=-90
-                             )
+xaxislist<-list(title = "Date", tickfont = list(size=10))
+
 yaxislist<-list(range=c(0.2, upperrange))
 
 fig50<-plot_ly(dta50, x=~date, y=~mortality, 
@@ -800,6 +782,12 @@ testrate<-round(max(dtabyday$total)/sum(dtapop$pop10))
 ```
 
 Very aggressive. As of `r latesttest`, a total of `r totaltest` thousand people have been tested. There are `r totalpop` million people in the country, and __`r testrate` in every 1000 people__ have been test. This is [one of the highest cumulative testing rates in the world](https://ourworldindata.org/covid-testing). Epidemiological investigation of the case No. 31 (who was confirmed on February 18th) prompted immediate and massive testing in Daegu and nation wide.  
+
+```{r}
+colnames(dtabyday)
+#View(dtabyday)
+
+```
 
 ```{r plottest, results="asis", fig.align="left", out.width="800px"}
 dta<-left_join(dtabyday, dtanewcasebyday, by = "date")
@@ -935,7 +923,7 @@ plot_ly(dta, x=dta$date, y=dta$newconfirmedcases,
                          autotick = TRUE,
                          showticklabels = TRUE, 
                          tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickangle=0),
             yaxis = list(title = "Number of new confirmed cases"))
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)
