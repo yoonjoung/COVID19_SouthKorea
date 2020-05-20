@@ -326,13 +326,99 @@ So, I have been watching the epidemic in China and Korea since the beginning, bu
 
 First of all, everyone, __STAY HEALTHY and [see what YOU can do](https://www.cdc.gov/coronavirus/2019-ncov/protect/index.html)__! 
 
-Second, there are many excellent news articles and information sources, but I'm sharing some more __questions (see left panel) and answers for those who are curious about the situation in South Korea, specifically. Please note that the country has had a trace-test-isolate strategy consistently from the outset of this epidemic__. If you want to know more about South Korean situation - compared to other countries, see this Washington Post article: [How countries arond the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true) 
+Second, there are many excellent news articles and information sources, but I'm sharing some more __questions (see left panel) and answers for those who are curious about the situation in South Korea, specifically. Please note that the country has had a trace-test-isolate strategy consistently from the outset of this epidemic__. If you want to know more about South Korean situation - compared to other countries, see this Washington Post article: [How countries around the world have tried to contain the coronavirus](https://www.washingtonpost.com/world/2020/03/13/how-countries-around-world-have-tried-contain-coronavirus/?arc404=true) 
 
 All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. Kudos! 
 
 ```{r plotworld, fig.align="left", out.width = "600px"}
 #knitr::include_graphics("WP_casetrends.png")
 ```
+
+---
+
+#####__Q 10. From "social distancing" to "distancing in daily life": keeping an eye on new cases (NEW)__
+
+The first wave in South Korea has been completed unequivocally. On May 6th, the government announced a major pivot in its COVID19 control, to focus on __prevention of transmission, including "distancing in daily life", and transition to new "daily life" (not the typical normal life before the pandemic though)__. It will be important to keep the level of infections _under a threshold_ to prevent, delay, and control the next wave. 
+
+The following figure shows a trend of new cases (gray bars), with a 7-day rolling average (black line). The horizontal dotted line is the number of new cases on February 23rd, _when the cumulative incidence exceeded 1 per 100,000 population (i.e., 154 cases, averaged over 7 days) and the new infections increased exponentially_. 
+
+Nevertheless, [a new cluster of transmission was identified over a popular family holiday period](https://www.npr.org/sections/coronavirus-live-updates/2020/05/10/853468647/south-korea-records-spike-in-new-coronavirus-cases-after-nightclub-outbreak). The government is doing extensive tracing and testing, repeating its earlier strategy. We will keep a close eye on __the trend of new cases and new tests__ (see Question 5 below).   
+
+_Hover over each figure to see values and more options._
+```{r plotnewtrend, results="asis", fig.align="left", out.width="800px"}
+latestsummary<- dtanewcasebyday %>% 
+    select(date) %>% summarize_all(funs(max))
+
+dtafig<-dtanewcasebyday%>%
+    mutate(
+        newconfirmedcasessmooth =c(NA,NA,NA,rollmean(newconfirmedcases, 7),NA,NA,NA), 
+        newconfirmedcasessmooth = round(newconfirmedcasessmooth, 1),
+        startdate=as.Date("2020-02-23"),
+        peakdate=as.Date("2020-03-03"), 
+        enddate=as.Date("2020-03-12") 
+        )
+              
+shapelist<-list(
+            list(
+                type = "rect",  fillcolor = "#f03b20", 
+                line = list(color = "#f03b20"), opacity = 0.2,
+                x0=min(dtafig$startdate), x1=max(dtafig$peakdate, na.rm = TRUE),xref = "x",
+                y0=0,y1=1000, yref = "y") , 
+            list(
+                type = "rect",  fillcolor = "#fd8d3c", 
+                line = list(color = "#fd8d3c"), opacity = 0.2,
+                x0=min(dtafig$peakdate, na.rm = TRUE), x1=max(dtafig$enddate, na.rm = TRUE),xref = "x",
+                y0=0,y1=1000, yref = "y" ),
+            list(
+                type = "rect",  fillcolor = "#fed976", 
+                line = list(color = "#fed976"), opacity = 0.2,
+                x0=max(dtafig$enddate, na.rm = TRUE), x1=max(dtafig$date),xref = "x",
+                y0=0,y1=1000, yref = "y" )
+            )
+  
+plot_ly(dtafig, x=~date, 
+        y=~newconfirmedcases, name="New cases", 
+        type='bar', 
+        marker=list(color = c( "lightgray"), size = 1),
+        line=list(color = c( "lightgray"))
+        ) %>%
+    add_trace(
+        y=~newconfirmedcasessmooth, name="New cases, 7-day rolling average",
+        type='scatter',mode = 'lines', 
+        marker=list(color = c( "black"), size = 1),
+        line=list(color = c( "black"))
+        )%>%
+    add_segments(x = as.Date("2020-01-20"), xend = max(date), 
+                 y = 154, yend = 154, 
+                 marker = list(color = "black", size = 2.2),
+                 line= list(color = "black", dash = 'dot'),
+                 showlegend=FALSE)%>%
+    add_annotations(x = as.Date("2020-04-05"), y = 250, yaxis='y',
+                    text="Number of new cases",
+                    showarrow = FALSE, 
+                    font = list(color = "black", size = 12))%>%        
+    add_annotations(x = as.Date("2020-04-05"), y = 220, yaxis='y',
+                    text="at the start of the first wave",
+                    showarrow = FALSE, 
+                    font = list(color = "black", size = 12))%>%        
+    add_annotations(x = as.Date("2020-04-05"), y = 190, yaxis='y',
+                    text="(154 per day)",
+                    showarrow = FALSE, 
+                    font = list(color = "black", size = 12))%>%        
+    layout(
+        shapes=shapelist, 
+        title = c("Trend of new cases before, during, and after the first wave"),
+        xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
+        yaxis = list(title = "New cases", 
+                     range=c(0,1000)),
+        margin = list(b = 100, r=100), 
+        legend=list(orientation="h", xanchor = "center", yanchor = "center", 
+                    x = 0.5, y = -0.1) 
+        )
+
+```
+(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)   
+_Note: Three phases (red/orange/yellow shades) based on the trend of new concirmed cases. [See here for more information on that classification](https://medium.com/@yj.choi.isquared/flattening-covid-19-curve-in-south-korea-and-comparison-among-oecd-countries-singapore-and-taiwan-ae211a5645c9)_. 
 
 ---
 
@@ -346,14 +432,15 @@ cfrGB<-dtabyregion%>%filter(date==max(date))%>%filter(region=="Gyungbuk")%>%sele
 
 This is one of common questions that I've received, as we see [huge variation in incidence rates across states and counties in the US](https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html#states). 
 
-In South Korea, however, __the entire country is under one same strategy for infectious diseases contol__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or mortality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). About 80% of total confirmed cases have occurred in Daegu and Gyeungbuk province. 
+In South Korea, however, __the entire country is under one same strategy for infectious diseases control__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or mortality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). About 80% of total confirmed cases have occurred in Daegu and Gyeungbuk province. 
 
-* In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected - compared to below 6 per 100,000 population in all other regions.  
+* In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected - compared to below 7 per 100,000 population in all other regions.  
 
 * In Gyungbuk, mortality has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). Mortality is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
 
-It is notable that the outbreak in Daegu and Gyungbuk did not spread throughout the country more widely, although the country is relatively small - about the size of Kentucky or Indiana in the US. 
+It is notable that the outbreak in Daegu and Gyungbuk did not spread throughout the country more widely, although the country is relatively small - about the size of Kentucky or Indiana in the US. For further regional data, [see here](https://rpubs.com/YJ_Choi/COVID19_SK_region).        
 
+_Hover over each figure to see values and more options._
 ```{r plotbyregion, results="asis", fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(date==max(date))
 
@@ -411,7 +498,7 @@ subplot(style(figincidencerate, showlegend = FALSE),
             nrows=1, shareY = FALSE, titleY = TRUE)
 
 ```
-(Note: special cities are included in provinces where they are located. Daegu is included in Gyungbuk province. Seoul and Inchon are included in Gyeonggi province. Busan is included in Gyungnam province. Gangwon has a small number of confirmed cases and was combined with Gyungnam.)
+(Note: special cities are included in provinces where they are located: ; Daejeon and Sejong in Chungnam province; Seoul and Inchon in Gyeonggi province; Daegu and Ulsan are included in Gyungbuk province; Busan in Gyungnam province; and Gwangju in Jeonnam province. For case fatality rate, Gangwon has a small number of confirmed cases and was further combined with Gyungnam.)
 
 ```{r plotbyregionincidence, fig.align="left", out.width="800px"}
 
@@ -492,6 +579,8 @@ plot_ly(dtafig, x=~date, y=~cfr,
                           title=list(text='Provinces*'))
             )
 ```
+
+---
 
 #####__Q 8. Is it spreading faster in some age groups than others?__ 
 ```{r}
@@ -586,11 +675,13 @@ fig
 dtaforpaper <- dtabyage%>%filter(latest==TRUE)%>%
     select(age, agegroup, confirmedcases, pop10, incidence)
     
-View(dtaforpaper)    
+#View(dtaforpaper)    
 
 
 
 ```
+
+---
 
 #####__Q 7.1. How has mortality changed over time?__ 
 
@@ -647,7 +738,7 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
-
+---
 
 #####__Q 7.2. How has mortality changed over time, by age group?__ 
 
@@ -662,7 +753,7 @@ mortality80initial<-dtabyage%>%filter(initial==TRUE & age==80)%>%
 
 ```
 
-The graph below shows trends of mortality by age group - starting from March 3rd. Mortality among those 80 and above has increased continuously. __As of `r latestbyage`, `r mortality80`% of people in their 80s who have confirmed COVID have died, increaed from `r mortality80initial`% on `r initialbyage`__. This increase is not surprising, considering the typical clinical timeline and prognosis of COVID infection. A more important question is _if and when_ the mortality rate will level off, as this epidemic progresses and a bigger proportion of population is affected.  
+The graph below shows trends of mortality by age group - starting from March 3rd. Mortality among those 80 and above has increased continuously. __As of `r latestbyage`, `r mortality80`% of people in their 80s who have confirmed COVID have died, increased from `r mortality80initial`% on `r initialbyage`__. This increase is not surprising, considering the typical clinical timeline and prognosis of COVID infection. A more important question is _if and when_ the mortality rate will level off, as this epidemic progresses and a bigger proportion of population is affected.  
 
 Mortality rate among the 70s has also increased but at a slower margin. Mortality among those in their 50s and 60s have remained similar over time or increased slowly.  
 
@@ -701,7 +792,7 @@ fig80<-plot_ly(dta80, x=~date, y=~mortality,
 subplot(fig50, fig60, fig70, fig80, shareY = TRUE) %>%
         layout(
             title ="Trends of cumulative mortality by age group",
-            yaxis = list(title = "Morality (per 100 confirmed cases)",
+            yaxis = list(title = "Mortality (per 100 confirmed cases)",
                          titlefont=list(size=10)),
             legend=list(orientation = "h", x = 0.2, y=0.8)
             )
@@ -713,13 +804,15 @@ fig<-subplot(style(fig50, legend = list(x = 0.15, y = 0.90)),
         )%>%
         layout(
             title ="Trends of cumulative mortality by age group",
-            yaxis = list(title = "Morality (per 100 confirmed cases)",
+            yaxis = list(title = "Mortality (per 100 confirmed cases)",
                          titlefont=list(size=10))
             )
 
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))   
 _Note_: Age-specific mortality data were first released on March, 3rd, and it has been updated daily since March 11th. 
+
+---
 
 #####__Q 6. How is it affecting children?__ 
 
@@ -767,7 +860,9 @@ plot_ly(dta, x=dta$agegroup, y=dta$incidence,
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestpediatric`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))   
 _Note_: These age groups roughly corresponds with school system age groups in South Korea.
 
-Of course, this is only epidemiologic perspective. Children's emotional, social, and economic well-being is more complex and difficult to capture yet.  
+Of course, this is only epidemiologic perspective. Children's emotional, social, and economic well-being is more complex and difficult to capture yet. 
+
+---
 
 #####__Q 5. How extensive has testing been?__ 
 
@@ -783,6 +878,11 @@ testrate<-round(max(dtabyday$total)/sum(dtapop$pop10))
 
 Very aggressive. As of `r latesttest`, a total of `r totaltest` thousand people have been tested. There are `r totalpop` million people in the country, and __`r testrate` in every 1000 people__ have been test. This is [one of the highest cumulative testing rates in the world](https://ourworldindata.org/covid-testing). Epidemiological investigation of the case No. 31 (who was confirmed on February 18th) prompted immediate and massive testing in Daegu and nation wide.  
 
+In early May, [a new cluster of transmission was identified](https://www.npr.org/sections/coronavirus-live-updates/2020/05/10/853468647/south-korea-records-spike-in-new-coronavirus-cases-after-nightclub-outbreak) after a period with a relatively small number of cases. __The number of new daily tests increased substantially back to the level in late Februray and early March, following extensive tracing related to the outbreak__.  
+
+Importantly, except in early March, __the rate of positive results out of all tests has remained low - i.e., substantially below 10%__. The black line below is 7-day rolling average of daily positive rates.  
+  
+
 ```{r}
 colnames(dtabyday)
 #View(dtabyday)
@@ -790,9 +890,14 @@ colnames(dtabyday)
 ```
 
 ```{r plottest, results="asis", fig.align="left", out.width="800px"}
-dta<-left_join(dtabyday, dtanewcasebyday, by = "date")
+dta<-left_join(dtabyday, dtanewcasebyday, by = "date")%>%
+    arrange(date)%>%
+    mutate(positiverate=round(100*(newconfirmedcases/test), 1),
+            positiveratesmooth =round(c(NA,NA,NA,rollmean(positiverate, 7),NA,NA,NA), 5), 
+            positiveratesmooth =ifelse(positiveratesmooth<0,  0, positiveratesmooth)
+            )
 
-fig<-plot_ly(dta, x=dta$date, y=dta$test, 
+fig1<-plot_ly(dta, x=dta$date, y=dta$test, 
         type = 'bar', name='All tests' ) %>%
         add_trace(y=dta$newconfirmedcases, name = 'Positive tests') %>%
         layout(
@@ -802,23 +907,69 @@ fig<-plot_ly(dta, x=dta$date, y=dta$test,
             yaxis = list(title = "Number of tests"),
             legend=list(x = 0.1, y = 0.9))
 
-plot_ly(dta, x=dta$date, y=dta$test, 
-        type = 'bar', name='All tests', offsetgroup=1, 
-        marker=list(color ="#8DB9D9")) %>%
-        add_trace(y=dta$newconfirmedcases, name = 'Positive tests', marker=list(color ="#1F77B4"), type = 'bar', offsetgroup=2, yaxis='y2' ) %>%    
-        layout(
-            title = "Number of tests and confirmed cases by day",
-            xaxis = list(title = "Date",  
-                         tickfont = list(size=10)),
-            yaxis = list(title = "Number of all tests"),
-            yaxis2 = list(overlaying='y',side="right",
-                          title = "Number of confirmed cases"),
-            barmode='group',
-            margin = list(b = 100, r=100),
-            legend=list(x = 0.1, y = 0.9))
+fig2<-plot_ly(dta, x=~date, 
+        y=~test, name="Tests per day",
+        type='bar',  
+        marker=list(color = c( "#8DB9D9"), opacity=1)
+        
+        ) %>%
+    add_trace(
+        y=~newconfirmedcases, name="New cases per day", 
+        type='bar', 
+        marker=list(color = c( "#D98D8D"), opacity=0.5),
+        
+        yaxis='y2'
+        )%>%
+    layout(
+        title = c("Trend of daily tests and new cases"),
+        xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
+        yaxis = list(title = "Number of tests", 
+                     range=c(0, 20000),
+                     side="left", showgrid = FALSE ),
+        yaxis2 = list(title = "Number of new cases", 
+                      range=c(0, 2000),
+                      overlaying='y',  
+                      side="right", showgrid = FALSE),
+        margin = list(b = 100, r=100), 
+        legend=list(orientation="v", xanchor = "left", yanchor = "center", 
+                    x = 0.1, y = 0.8) 
+        
+        )    
 
+plot_ly(dta, x=~date, 
+        y=~test, name="Tests per day",
+        type='bar',  
+        marker=list(color = c( "#8DB9D9"), opacity=1, size=2)
+        ) %>%
+    add_lines(
+        y=~positiveratesmooth, name="Positive rate", 
+        marker=list(color = "black"),
+        line=list(color = "black"),
+        yaxis='y2')%>%
+    add_segments(x = min(dta$date), xend = max(dta$date), 
+                 y = 10, yend = 10,yaxis='y2', 
+                 marker = list(color = "gray",size = 2, dash="dot"),
+                 line= list(color = "gray"),
+                 showlegend=FALSE)%>%
+    layout(
+        title = c("Trend of daily tests and new cases"),
+        xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
+        yaxis = list(title = "Number of tests", 
+                     range=c(0, 20000),
+                     side="left", showgrid = FALSE ),
+        yaxis2 = list(title = "Positive rate (%)", 
+                      range=c(0, 20),
+                      overlaying='y',  
+                      side="right", showgrid = FALSE),
+        margin = list(b = 100, r=100), 
+        legend=list(orientation="v", xanchor = "left", yanchor = "center", 
+                    x = 0.1, y = 0.8) 
+        
+        )    
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030). The number of tests is calculated based on the daily increase in the total number of tests reported.)
+
+---
 
 #####__Q 4. What is the mortality - overall and by age group?__ 
 
@@ -860,6 +1011,8 @@ plot_ly(dta, x=dta$agegroup, y=dta$mortality,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestbyage`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
+---
+
 #####__Q 3. What age groups are affected?__ 
 
 ```{r}
@@ -890,6 +1043,8 @@ plot_ly(dta, x=dta$agegroup, y=dta$incidence,
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestbyage`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 
+---
+
 #####__Q 2. How fast has it been spreading?__ 
 
 ```{r}
@@ -910,9 +1065,11 @@ totalcases
 totalincidence
 ```
 
-For this question, let's focus on __the number of new cases by day__. For about a month, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. __More recently, the number of new cases started to decrease, and it appears to remain stable (see below).__ Still, as of `r latestsummary`, a total of `r totalcases` people have been infected. It means __`r totalincidence` people have been infected out of 100,000 population since beginning of the epidemic__. 
+For this question, let's focus on __the number of new cases by day__. For about a month since the first case, only 30 cases were confirmed - mostly in/near Seoul. However, _starting from the case No. 31 (a super transmitter who was confirmed on February 18)_, the number of new cases exponentially increased - primarily in Daegu and a region surrounding it but throughout the country. For 10 days, more than 400 new cases were confirmed everyday, with a peak of 909 new cases on February 29. Since the peak, the number of new cases decreased consistently, and the first wave has been completed in South Korea. __This question has been merged with the new Question 10__.  
 
-```{r plottrendkorea, results="asis", fig.align="left", out.width="800px"}
+As of `r latestsummary`, a total of `r totalcases` people have been infected. It means __`r totalincidence` people have been infected out of 100,000 population since beginning of the epidemic__. 
+
+```{r plottrendkorea, fig.align="left", out.width="800px"}
 dta<-dtanewcasebyday
 
 plot_ly(dta, x=dta$date, y=dta$newconfirmedcases, 
@@ -925,8 +1082,12 @@ plot_ly(dta, x=dta$date, y=dta$newconfirmedcases,
                          tickfont = list(size=10), 
                          tickangle=0),
             yaxis = list(title = "Number of new confirmed cases"))
+
+#(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)
+
 ```
-(__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)
+
+---
 
 #####__Q 1. When did it start?__ 
 
@@ -937,9 +1098,9 @@ On January 20, 2020, there was the first laboratory confirmed COVID case.
 <p style="color:gray">
 More questions and data coming soon, as I continue digging the awesome KCDC website...    
 See [GitHub](https://github.com/yoonjoung/COVID19_SouthKorea) for data, code, and more information.  
-For typos, errors, and questions, contact me at [www.isquared.global]("https://www.isquared.global/YJ")</p>
+For typos, errors, and questions, contact me at [www.isquared.global](https://www.iSquared.global/YJ). 
 
-_Making Data Delicious, One Byte at a Time_, in good times and bad times.
+_Making Data Delicious, One Byte at a Time_, in good times and bad times.</p>
 
 
 ```{r plotPAPER1, fig.align="left", out.width="800px"}

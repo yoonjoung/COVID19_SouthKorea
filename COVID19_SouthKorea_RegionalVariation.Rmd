@@ -165,13 +165,17 @@ dtabyregion<-dtabyregion %>%
     arrange(date, region)
 ```
 
-#####__Regional variation in South Korea__ 
+#####__COVID-19 regional variation in South Korea__ 
 
 (Updated: `r time` EDT)  
 
+* This shows supplementary figures for [COVID-19 in South Korea - and potential implications for us (wherever we are)](https://rpubs.com/YJ_Choi/COVID19_SouthKorea)      
+* All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. KCDC has released regional data since March 7th.    
+* Special cities are included in provinces where they are located: Daejeon and Sejong in Chungnam province; Seoul and Inchon in Gyeonggi province; Daegu and Ulsan are included in Gyungbuk province; Busan in Gyungnam province; and Gwangju in Jeonnam province.   
+
 ---
 
-#####1. Cumulative cases by region 
+#####__1. Cumulative cases by region__ 
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(date==max(date))
 
@@ -204,10 +208,7 @@ fig2<-plot_ly(dtafig, x=~region, y=~cases, type = 'bar',
     layout(
             title = c("COVID-19 cases by region - except GB"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Number of Confirmed cases"), 
             legend = list(x = 1.2, y = 0.9, 
                           title=list(text='Provinces*'))
@@ -219,7 +220,9 @@ subplot(fig1, fig2, nrows=1) %>%
 
 ```
 
-#####2. Cumulateive incidence by region 
+---
+
+#####__2. Cumulative incidence by region__ 
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(date==max(date))
 
@@ -252,10 +255,7 @@ fig2<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
     layout(
             title = c("COVID-19 incidence by region"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Confirmed cases per 100,000 population"), 
             legend = list(x = 1.2, y = 0.9, 
                           title=list(text='Provinces*'))
@@ -267,13 +267,12 @@ subplot(fig1, fig2, nrows=1) %>%
 
 ```
 
-#####2.1 Cumulateive incidence trend by region 
-```{r,  results='asis', fig.align="left", out.width="800px"}
+---
+
+#####__2.1 Trend of cumulateive incidence rates by region over time__ 
+```{r,  fig.align="left", out.width="800px"}
 listx<-list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=6), 
-                         tickangle=-90)
+                         tickfont = list(size=10))
 listy<-list(range=c(0, 7))
 
 dtafig<-dtabyregion%>%filter(region=="Gyeonggi")
@@ -320,21 +319,53 @@ subplot(figgb, figgg, figgw, figcn, figcb, figjb, figjn, figgn, figjj,
         nrows=3, shareX=TRUE, shareY=FALSE) %>%
         layout(
             title ="Trends of cumulative incidence rate (per 100,000) by region",
-            legend = list(orientation = 'h', x = 0.2) 
+            showlegend=FALSE, 
+            margin = list(b = 100)
             )
 ```
 
-#####3. Changes in regional composition over time
+```{r,  results='asis', fig.align="left", out.width="800px"}
+
+panel <- . %>% 
+  plot_ly(x=~date, y=~incidence, type = 'bar', marker=list(color=("'#1F77B4'")) ) %>%
+  add_annotations(
+    text = ~unique(region),
+    x = 0.5, y = 0.9, xref = "paper", yref = "paper",    
+    xanchor = "center", yanchor = "bottom", showarrow = FALSE,
+    font = list(size = 12)
+  ) %>%
+  layout(
+    showlegend = FALSE,
+    xaxis=list(title = "Date",  
+             font=list(size=10),
+             tickfont = list(size=8) 
+             ),
+    yaxis=list(title = "incidence rate (per 100,000)"))
+
+
+dtafig<-dtabyregion%>%filter(region!="Airport")
+
+dtafig%>%
+    group_by(region) %>%
+    do(p = panel(.)) %>%
+    subplot(nrows = 3, shareX = TRUE, shareY = FALSE)%>%
+        layout(
+            title ="Trends of cumulative incidence rate (per 100,000) by region",
+            showlegend=FALSE, 
+            margin = list(b = 100)
+            )   
+```
+
+---
+
+#####__3. Trend of regional composition among confirmed cases over time__
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion
 plot_ly(dtafig, x=~date, y=~pctcases, type = 'bar', color= ~region )%>% 
     layout(
             title = c("Trend of case composition by region"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Percent of total cases"),
             barmode="stack",  
             legend = list(x = 1.05, y = 0.9, 
@@ -342,18 +373,18 @@ plot_ly(dtafig, x=~date, y=~pctcases, type = 'bar', color= ~region )%>%
             )
 ```
 
-#####4. Number of new cases by region over time
+---
+
+#####__4. Trend of new cases by region over time__
 ```{r,  results='asis', fig.align="left", out.width="800px"}
-dtafig<-dtabyregion
-plot_ly(dtafig, x=~date, y=~newcases, 
+dtafig<-dtabyregion%>%
+    mutate(newcases = ifelse(newcases<0, 0, newcases))%>%
+    plot_ly(dtafig, x=~date, y=~newcases, 
         type = 'bar', color= ~region ) %>%
         layout(
             title = c("Trend of daily new confirmed COVID-19 cases by region"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Number of new confirmed cases"),
             barmode="stack",  
             legend = list(x = 1.05, y = 0.9, 
@@ -361,13 +392,11 @@ plot_ly(dtafig, x=~date, y=~newcases,
             )
 ```
 
-```{r,  results='asis', fig.align="left", out.width="800px"}
-listx<-list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=6), 
-                         tickangle=-90)
+```{r,  fig.align="left", out.width="800px"}
+listx<-list(title = "Date", tickfont = list(size=8))
+
 listy<-list(range=c(0, 30))
+listy2<-list(range=c(0, 15))
 
 dtafig<-dtabyregion%>%filter(region=="Gyeonggi")
 figgg<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyeonggi")%>%
@@ -375,11 +404,11 @@ figgg<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyeonggi")%>%
 
 dtafig<-dtabyregion%>%filter(region=="Gangwon")
 figgw<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gangwon")%>%
-        layout(xaxis=listx, yaxis=listy)
+        layout(xaxis=listx, yaxis=listy2)
 
 dtafig<-dtabyregion%>%filter(region=="Chungbuk")
 figcb<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Chungbuk" )%>%
-        layout(xaxis=listx, yaxis=listy)
+        layout(xaxis=listx, yaxis=listy2)
 
 dtafig<-dtabyregion%>%filter(region=="Chungnam")
 figcn<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Chungnam")%>%
@@ -387,11 +416,11 @@ figcn<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Chungnam")%>%
 
 dtafig<-dtabyregion%>%filter(region=="Jeonbuk")
 figjb<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Jeonbuk" )%>%
-        layout(xaxis=listx, yaxis=listy)
+        layout(xaxis=listx, yaxis=listy2)
 
 dtafig<-dtabyregion%>%filter(region=="Jeonnam")
 figjn<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Jeonnam")%>%
-        layout(xaxis=listx, yaxis=listy)
+        layout(xaxis=listx, yaxis=listy2)
 
 dtafig<-dtabyregion%>%filter(region=="Gyungbuk")
 figgb<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyungbuk")%>%
@@ -399,11 +428,11 @@ figgb<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyungbuk")%>%
 
 dtafig<-dtabyregion%>%filter(region=="Gyungnam")
 figgn<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Gyungnam" )%>%
-        layout(xaxis=listx, yaxis=listy)
+        layout(xaxis=listx, yaxis=listy2)
 
 dtafig<-dtabyregion%>%filter(region=="Jeju")
 figjj<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Jeju" )%>%
-        layout(xaxis=listx, yaxis=listy)
+        layout(xaxis=listx, yaxis=listy2)
 
 dtafig<-dtabyregion%>%filter(region=="Airport")
 figairport<-plot_ly(dtafig, x=~date, y=~newcases, type = 'bar', name="Airport")%>%
@@ -413,12 +442,55 @@ subplot(figgb, figgg, figairport, figcn, figgw, figcb, figjb, figjn, figgn, figj
         nrows=3, shareX=TRUE, shareY=FALSE) %>%
         layout(
             title ="Trends of new cases by region",
-            legend = list(orientation = 'h', x = 0.2) 
+            legend = list(orientation = 'h', x = 0.2) ,
+            margin = list(b = 100)
             )
 
 ```
 
-#####5. Number of deaths by region
+```{r,  results='asis', fig.align="left", out.width="800px"}
+
+panel <- . %>% 
+  plot_ly(x=~date, y=~newcases, type = 'bar', marker=list(color=("'#1F77B4'")) ) %>%
+  add_annotations(
+    text = ~unique(region),
+    x = 0.5, y = 0.9, xref = "paper", yref = "paper",    
+    xanchor = "center", yanchor = "bottom", showarrow = FALSE,
+    font = list(size = 12)
+  ) %>%
+  layout(
+    showlegend = FALSE,
+    xaxis=list(title = "Date",  
+             font=list(size=10),
+             tickfont = list(size=8) 
+             ),
+    yaxis=list(title = "New cases"))
+
+
+dtafig<-dtabyregion%>%filter(region!="Airport")%>%
+    mutate(newcases = ifelse(newcases<0, 0, newcases))
+
+dtafig%>%
+    group_by(region) %>%
+    do(p = panel(.)) %>%
+    subplot(nrows = 3, shareX = TRUE, shareY = FALSE)%>%
+        layout(
+            title ="Trends of new cases by region",
+            showlegend=FALSE, 
+            margin = list(b = 100)
+            )   
+```
+
+---
+
+#####__5. Number of deaths by region__
+```{r,  results='asis', fig.align="left", out.width="800px"}
+dtafig<-dtabyregion%>%filter(cfr>0)%>%filter(region!="Airport")
+ncfr<-length(unique(dtafig$region))
+```
+
+As of `r date`, COVID-19 deaths have been reported in `r ncfr` provinces. 
+
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Airport")
 
@@ -430,17 +502,16 @@ plot_ly(dtafig, x=~region, y=~deaths, type = 'bar')%>%
     layout(
             title = c("COVID-19 deaths by region"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Number of deaths"), 
             legend = list(x = 1.2, y = 0.9, 
                           title=list(text='Provinces*'))
             )
 ```
 
-#####6. Case fatality rate by region
+---
+
+#####__6. Case fatality rate by region__
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Airport")
 
@@ -452,17 +523,17 @@ plot_ly(dtafig, x=~region, y=~cfr, type = 'bar')%>%
     layout(
             title = c("COVID-19 mortality rate by region"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Deaths per 100 confirmed cases (%)"), 
             legend = list(x = 1.2, y = 0.9, 
                           title=list(text='Provinces*'))
             )
 ```
 
-#####7. Trends of case fatality rate by region
+---
+
+#####__6.2. Trends of case fatality rate by region over time__
+
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(cfr>0)%>%filter(region!="Airport")
 
@@ -472,12 +543,17 @@ plot_ly(dtafig, x=~date, y=~cfr,
         layout(
             title = c("Trend of CFR by region"),
             xaxis = list(title = "Date",  
-                         autotick = FALSE,
-                         showticklabels = TRUE, 
-                         tickfont = list(size=10), 
-                         tickangle=-90),
+                         tickfont = list(size=10)),
             yaxis = list(title = "Deaths per 100 cases (%)"),
             legend = list(x = 0.1, y = 0.7, 
                           title=list(text='Provinces*'))
             )
 ```
+
+---
+
+<p style="color:gray">
+See [GitHub](https://github.com/yoonjoung/COVID19_SouthKorea) for data, code, and more information.  
+For typos, errors, and questions, contact me at [www.isquared.global](https://www.iSquared.global/YJ). 
+
+_Making Data Delicious, One Byte at a Time_, in good times and bad times.</p>
