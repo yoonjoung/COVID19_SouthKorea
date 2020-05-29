@@ -46,40 +46,52 @@ dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KC
 
     #table(dta$group)
     #table(dta$grouplabel)
-
-dtabyage<-dta %>%
-    filter(group=="age") %>%
-    select(Date_PressRelease, grouplabel, confirmedcases, deaths) %>%
+dtabyagesex<-dta %>%
+    select(Date_PressRelease, group, grouplabel, confirmedcases, deaths) %>%
     mutate(
         date=as.Date(Date_PressRelease, "%m/%d/%y"), 
         deaths=as.numeric(deaths), 
         deaths=ifelse(is.na(deaths)==T, 0, deaths),
         grouplabel=ifelse(grepl("bove", grouplabel) == T, "80-", grouplabel),
-        age=sapply(strsplit(grouplabel,"-"), `[`, 1) , 
         agegroup=grouplabel, 
-        agegroup=ifelse(grouplabel=="80-", "80+", agegroup)
+        agegroup=ifelse(grouplabel=="80-", "80+", agegroup),
+        age=sapply(strsplit(grouplabel,"-"), `[`, 1), 
+        grouplabel=sapply(strsplit(grouplabel,"-"), `[`, 1) 
         ) %>%
-    select(-grouplabel)%>%
-    arrange(Date_PressRelease, age)
+    arrange(Date_PressRelease, group, grouplabel)
 
-    #table(dtabyage$age)
-
-dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear")
-dtapop<-dtapop %>%    
-    filter(is.na(pop10)==F)  %>%
+dtapopage<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear")%>%    
+    filter(is.na(pop10)==F) %>%
     mutate(
-        age=as.character(Age)) %>%
-    select(age, pop10)
+        age=as.character(Age), 
+        grouplabel=age, 
+        pop=pop10
+        ) %>%
+    select(grouplabel, pop)
 
-dtabyage<-left_join(dtabyage, dtapop, by = "age") %>%
+dtapopsex<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="Sex")%>%
+    filter(is.na(pop)==F) %>%
+    select(grouplabel, pop) 
+    
+dtapop<-rbind(dtapopsex, dtapopage)
+
+    #table(dtapop$grouplabel)
+    #table(dtabyagesex$grouplabel)
+
+dtabyagesex<-left_join(dtabyagesex, dtapop, by = "grouplabel") %>%
     mutate(
-        incidence=round(100*confirmedcases/pop10),
-        mortality=round(100*deaths/confirmedcases, 1),
+        incidence=round(100*confirmedcases/pop, 1), #per 100,000 pop
+        cfr=round(100*deaths/confirmedcases, 1),
         latest=date==max(date), 
         initial=date==min(date) 
         ) 
 
+dtabyage<-dtabyagesex %>%
+    filter(group=="age")%>% 
+    arrange(Date_PressRelease, age)
+
 #export to CSV for the paper 
+write.csv(dtabyagesex, "KCOVID/KCDC_data_exported/dtabyagesex.csv")
 write.csv(dtabyage, "KCOVID/KCDC_data_exported/dtabyage.csv")
 ```
 
@@ -108,7 +120,7 @@ dtabyday<-dta %>%
     mutate(
         test=lead(total)-total, #new tests in each day
         testpositive=lead(confirmed_total)-confirmed_total, #new positive in each day
-        mortality=round(100*confirmed_deceased / confirmed_total, 1), #cumulative CFR (%)
+        cfr=round(100*confirmed_deceased / confirmed_total, 1), #cumulative CFR (%)
         incidence=round(100*confirmed_total/totalpop, 1) #cumulative incidence per 100,000 population 
         )
 
@@ -163,7 +175,7 @@ dtapop<-dta %>%
 dtapediatric<-left_join(dtapediatric, dtapop, by = "agegroup") %>%
     mutate(
         incidence=round(100*totalconfirmedcases/pop, 1),
-        #mortality=round(100*deaths/confirmedcases, 1),
+        #cfr=round(100*deaths/confirmedcases, 1),
         latest=date==max(date)
         ) 
 ```
@@ -432,11 +444,11 @@ cfrGB<-dtabyregion%>%filter(date==max(date))%>%filter(region=="Gyungbuk")%>%sele
 
 This is one of common questions that I've received, as we see [huge variation in incidence rates across states and counties in the US](https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html#states). 
 
-In South Korea, however, __the entire country is under one same strategy for infectious diseases control__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or mortality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). About 80% of total confirmed cases have occurred in Daegu and Gyeungbuk province. 
+In South Korea, however, __the entire country is under one same strategy for infectious diseases control__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or case fatality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). About 80% of total confirmed cases have occurred in Daegu and Gyeungbuk province. 
 
 * In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected - compared to below 7 per 100,000 population in all other regions.  
 
-* In Gyungbuk, mortality has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). Mortality is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
+* In Gyungbuk, case fatality rate has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). case fatality rate is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
 
 It is notable that the outbreak in Daegu and Gyungbuk did not spread throughout the country more widely, although the country is relatively small - about the size of Kentucky or Indiana in the US. For further regional data, [see here](https://rpubs.com/YJ_Choi/COVID19_SK_region).        
 
@@ -451,7 +463,7 @@ dtafig$region<-factor(dtafig$region,
 figincidencerate<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
               name= "Province", marker = list(color = c('rgb(146,197,222)',  'rgb(146,197,222)', 'rgb(146,197,222)',"blue",  "red", 'rgb(146,197,222)','rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)')))%>% 
     layout(
-            annotations = list(x = 0.2 , y = 0.95, 
+            annotations = list(x = 0.2 , y = 0.99, 
                                text = "<b>COVID-19 incidence by region</b>", 
                                showarrow = F, xref='paper', yref='paper'),
             xaxis = list(title = "Date",  
@@ -482,19 +494,19 @@ figcfr<-plot_ly(dtafig, x=~date, y=~cfr,
         type = 'scatter', mode = 'lines', color= ~region3 ,
         colors = c("dodgerblue3", "blue", "red")) %>%
         layout(
-            annotations = list(x = 0.1 , y = 0.95, 
+            annotations = list(x = 0.1 , y = 0.99, 
                                text = "<b>Trend of case fatality rates by province</b>", 
                                showarrow = F, xref='paper', yref='paper', xanchor = 'left'),
             xaxis = list(title = "Date",  
                          tickfont = list(size=10)),
             yaxis = list(title = "Deaths per 100 cases (%)", range=c(0, 3.5)),
-            legend = list(x = 0.55, y = 0.90)
+            legend = list(x = 0.55, y = 0.95)
             )
 
 subplot(style(figincidencerate, showlegend = FALSE), 
         style(figcfr, 
-              annotations= list(x = 0.55, y = 0.95, xanchor = 'left'), 
-              legend = list(x = 0.55, y = 0.90)),
+              annotations= list(x = 0.55, y = 0.99, xanchor = 'left'), 
+              legend = list(x = 0.55, y = 0.95)),
             nrows=1, shareY = FALSE, titleY = TRUE)
 
 ```
@@ -584,6 +596,9 @@ plot_ly(dtafig, x=~date, y=~cfr,
 
 #####__Q 8. Is it spreading faster in some age groups than others?__ 
 ```{r}
+table(dtabyage$agegroup)
+table(dtabyage$date)
+
 temp<-dtabyage%>%select(date, agegroup, incidence)%>%filter(agegroup=="80+")%>%filter(date=="2020-03-03")
 incidence80_0303<-mean(temp$incidence)
 
@@ -592,12 +607,14 @@ incidence80_0321<-mean(temp$incidence)
 
 temp<-dtabyage%>%select(date, agegroup, incidence, latest)%>%filter(agegroup=="80+")%>%filter(latest==TRUE)
 incidence80_latest<-mean(temp$incidence)
- 
+
 ```
 
 So, we know about the age-pattern of mortality (i.e., higher in older ages, see Question 4) and relatively young patient population in South Korea (See Question 3). Meanwhile, as I saw overall mortality going up steadily (See Question 7.1), I wanted to know if COVID is spreading more rapidly among those who would have higher mortality risk (e.g., older people). One way to answer that question is to see if infection incidence rate (number of confirmed cases per population) has increased more rapidly in one age group than others. 
 
-In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0321` on March 21st, and __`r incidence80_latest` on `r date`__. The increase around mid-late March reflects [outbreaks in nursing homes](https://www.scmp.com/week-asia/health-environment/article/3075937/coronavirus-nursing-homes-emerge-south-koreas-new). But, __it is also notable that infection rate among the 20s has increased steadily since late March__ - which may be due to 'imported cases' among Koreans returning from overseas (this can be confirmed if age breakdown among those imported cases is available).  
+In all age groups, there was a rapid increase in early March, when the country had a huge and acute outbreak _(sorry, it's not very clear in the figure, because the age-specific trend data starts from March 3rd)_. Following that, however, __the infection rate has increased more rapidly among those who are 80 and older than in any other age groups (red line in the below figure)__: from `r incidence80_0303` per 100,000 people on March 3rd when detailed data by age were released first, to `r incidence80_0321` on March 21st, and __`r incidence80_latest` on `r date`__. The increase around mid-late March reflects [outbreaks in nursing homes](https://www.scmp.com/week-asia/health-environment/article/3075937/coronavirus-nursing-homes-emerge-south-koreas-new). 
+
+But, __it is also notable that infection rate among the 20s has increased steadily since late March__ - which may be due to 'imported cases' among Koreans returning from overseas (this can be confirmed if age breakdown among those imported cases is available).  
 
 _Hover over each figure to see values and more options._
 ```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="700px"}
@@ -624,8 +641,8 @@ fig <- plot_ly(dta, x=~date, y=~incidence0, name = "0-9",
     add_trace(y = ~incidence40, name = "40-49", line = list(color = c( "rgb(35,139,69)"))) %>% 
     add_trace(y = ~incidence50, name = "50-59", line = list(color = c( "rgb(0,109,44)"))) %>% 
     add_trace(y = ~incidence60, name = "60-69", line = list(color = c( "rgb(0,68,27)"))) %>% 
-    add_trace(y = ~incidence70, name = "70-79", line = list(color = c( "rgb(33,113,18)"))) %>% 
-    add_trace(y = ~incidence80, name = "80+", line = list(color = c( "rgb(239,59,44)"))) %>% 
+    add_trace(y = ~incidence70, name = "70-79", line = list(color = c( "#FF9900"), width=3)) %>% 
+    add_trace(y = ~incidence80, name = "80+", line = list(color = c( "#CC0000"), width=3)) %>% 
     layout(
         title ="Trends of cumulative incidence rate by age group",
         yaxis = list(title = "Number of confirmed cases (per 100000 population)",
@@ -673,7 +690,7 @@ fig
 
 
 dtaforpaper <- dtabyage%>%filter(latest==TRUE)%>%
-    select(age, agegroup, confirmedcases, pop10, incidence)
+    select(age, agegroup, confirmedcases, pop, incidence)
     
 #View(dtaforpaper)    
 
@@ -691,45 +708,45 @@ totaldeaths<-dtabyage %>% filter(latest==TRUE) %>%
     select(deaths) %>% summarize_all(funs(sum))
 totalcases<- dtanewcasebyday %>% 
     select(newconfirmedcases) %>% summarize_all(funs(sum))
-mortalityrate<-round(totaldeaths*100 / totalcases, 1)
+cfr<-round(totaldeaths*100 / totalcases, 1)
 
 date<-as.Date(Sys.time(	), format='%d%b%Y')
 length<-as.Date(date, format="%Y-%m-%d") - as.Date("2020-1-20", format="%Y-%m-%d")
 #It has been `r length`, since the first case was confirmed in South Korea. 
 ```
 
-South Korea had the first COVID death on February 19th. As of `r latestbyage`, there have been a total of `r totaldeaths`, with an overall mortality rate of `r mortalityrate`% among all cases. 
+South Korea had the first COVID death on February 19th. As of `r latestbyage`, there have been a total of `r totaldeaths`, with an overall case fatality rate of `r cfr`% among all cases. 
 
-The below graph shows trend of the overall mortality rate (starting from February 21st). The mortality rate (orange bars) initially increased for several days, but, as the number of new cases increased exponentially (see gray bars also Question 2), the mortality rate declined after the first peak. Then, it has increased gradually to the current level. Since South Korea still has been able to continue the trace-test-isolate strategy, it will be important to monitor mortality trends, providing important insight about this epidemic.  
+The below graph shows trend of the overall case fatality rate (starting from February 21st). The case fatality rate (orange bars) initially increased for several days, but, as the number of new cases increased exponentially (see gray bars also Question 2), the case fatality rate declined after the first peak. Then, it has increased gradually to the current level. Since South Korea still has been able to continue the trace-test-isolate strategy, it will be important to monitor the trends, providing important insight about this epidemic.  
 
 ```{r,  fig.align="left", out.width="600px"}
 #{r plotcfrtrend, results='asis', fig.align="left", out.width="600px"}
-dta<-dtabyday%>%filter(mortality>0)%>%select(date, mortality)
+dta<-dtabyday%>%filter(cfr>0)%>%select(date, cfr)
 
-plot_ly(dta, x=dta$date, y=dta$mortality, 
+plot_ly(dta, x=dta$date, y=dta$cfr, 
         type = 'bar') %>%
         layout(
-            title = "Trends of mortality among confirmed COVID-19 cases",
+            title = "Trends of case fatality rates",
             xaxis = list(title = "Date",  
                          tickfont = list(size=10), 
                          tickangle=-90),
-            yaxis = list(title = "Mortality per 100 COVID-19 cases (all age groups)")
+            yaxis = list(title = "Deaths per 100 COVID-19 cases (all age groups) (%)")
             )
 ```
 
 _Hover over each figure to see values and more options._
 ```{r plotincidencetrend, results="asis", fig.align="left", out.width="800px"}
-dta<-dtabyday%>%select(date, mortality, incidence)
-#dta<-dtabyday%>%filter(mortality>0)%>%select(date, mortality, incidence)
+dta<-dtabyday%>%select(date, cfr, incidence)
+#dta<-dtabyday%>%filter(cfr>0)%>%select(date, cfr, incidence)
 dta$incidence<-dta$incidence/10
 
 plot_ly(dta, x=dta$date, y=dta$incidence, 
         type = 'bar', name="Incidence rate (per million population)",
         marker = list(color = "rgb(204,204,204)")) %>%
-        add_trace(y = ~mortality, name = "Case fatality rate (per 100 cases)" ,
+        add_trace(y = ~cfr, name = "Case fatality rate (per 100 cases)" ,
                   marker = list(color = "rgb(253,141,60)")) %>%
         layout(
-            title = "Trends of cumulative incidence and mortality by day",
+            title = "Trends of cumulative incidence and case fatality rates by day",
             yaxis = list(title="", range=c(0, 2.5)),  
             xaxis = list(  
                          tickfont = list(size=10)), 
@@ -744,55 +761,55 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
 
 ```{r}
 latestbyage<-max(dtabyage$date)
-mortality80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
-    select(mortality)%>%summarize_all(funs(mean))
+cfr80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
+    select(cfr)%>%summarize_all(funs(mean))
 
 initialbyage<-min(dtabyage$date)
-mortality80initial<-dtabyage%>%filter(initial==TRUE & age==80)%>%
-    select(mortality)%>%summarize_all(funs(mean))
+cfr80initial<-dtabyage%>%filter(initial==TRUE & age==80)%>%
+    select(cfr)%>%summarize_all(funs(mean))
 
 ```
 
-The graph below shows trends of mortality by age group - starting from March 3rd. Mortality among those 80 and above has increased continuously. __As of `r latestbyage`, `r mortality80`% of people in their 80s who have confirmed COVID have died, increased from `r mortality80initial`% on `r initialbyage`__. This increase is not surprising, considering the typical clinical timeline and prognosis of COVID infection. A more important question is _if and when_ the mortality rate will level off, as this epidemic progresses and a bigger proportion of population is affected.  
+The graph below shows trends of mortality among those with confirmed COVID-19 by age group - starting from March 3rd. Case fatality rate among those 80 and above has increased continuously. __As of `r latestbyage`, `r cfr80`% of people in their 80s who have confirmed COVID have died, increased from `r cfr80initial`% on `r initialbyage`__. This increase is not surprising, considering the typical clinical timeline and prognosis of COVID infection. A more important question is _if and when_ the case fatality rate will level off, as this epidemic progresses and a bigger proportion of population is affected.  
 
-Mortality rate among the 70s has also increased but at a slower margin. Mortality among those in their 50s and 60s have remained similar over time or increased slowly.  
+Case fatality rate among the 70s has also increased but at a slower margin. Case fatality among those in their 50s and 60s have remained similar over time or increased slowly.  
 
 _Hover over each figure to see values and more options._
 ```{r plotmortalitytrendbyage, results="asis", fig.align="left", out.width="800px"}
 
-temp<-dtabyage%>%filter(latest==TRUE & age==80)%>%select(mortality)%>%summarize_all(funs(mean))
-upperrange<-round(temp$mortality+1)
+temp<-dtabyage%>%filter(latest==TRUE & age==80)%>%select(cfr)%>%summarize_all(funs(mean))
+upperrange<-round(temp$cfr+1)
 
-dta50<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="50-59")
-dta60<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="60-69")
-dta70<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="70-79")
-dta80<-dtabyage%>%select(date, agegroup, mortality)%>%filter(agegroup=="80+")
+dta50<-dtabyage%>%select(date, agegroup, cfr)%>%filter(agegroup=="50-59")
+dta60<-dtabyage%>%select(date, agegroup, cfr)%>%filter(agegroup=="60-69")
+dta70<-dtabyage%>%select(date, agegroup, cfr)%>%filter(agegroup=="70-79")
+dta80<-dtabyage%>%select(date, agegroup, cfr)%>%filter(agegroup=="80+")
 
 xaxislist<-list(title = "Date", tickfont = list(size=10))
 
 yaxislist<-list(range=c(0.2, upperrange))
 
-fig50<-plot_ly(dta50, x=~date, y=~mortality, 
+fig50<-plot_ly(dta50, x=~date, y=~cfr, 
                type = 'scatter', mode = 'lines', name = "50-59")%>%
        layout(xaxis = xaxislist,
               yaxis = yaxislist)
-fig60<-plot_ly(dta60, x=~date, y=~mortality, 
+fig60<-plot_ly(dta60, x=~date, y=~cfr, 
                type = 'scatter', mode = 'lines', name = "60-69")%>%
        layout(xaxis = xaxislist,
               yaxis = yaxislist)
-fig70<-plot_ly(dta70, x=~date, y=~mortality, 
+fig70<-plot_ly(dta70, x=~date, y=~cfr, 
                type = 'scatter', mode = 'lines', name = "70-79")%>%
        layout(xaxis = xaxislist,
               yaxis = yaxislist)
-fig80<-plot_ly(dta80, x=~date, y=~mortality, 
+fig80<-plot_ly(dta80, x=~date, y=~cfr, 
                type = 'scatter', mode = 'lines', name = "80+") %>%
        layout(xaxis = xaxislist,
               yaxis = yaxislist)
 
 subplot(fig50, fig60, fig70, fig80, shareY = TRUE) %>%
         layout(
-            title ="Trends of cumulative mortality by age group",
-            yaxis = list(title = "Mortality (per 100 confirmed cases)",
+            title ="Trends of cumulative case fatality rate by age group",
+            yaxis = list(title = "Case fatality rate (per 100 confirmed cases)",
                          titlefont=list(size=10)),
             legend=list(orientation = "h", x = 0.2, y=0.8)
             )
@@ -803,8 +820,8 @@ fig<-subplot(style(fig50, legend = list(x = 0.15, y = 0.90)),
         style(fig80, legend = list(x = 0.15, y = 0.90)) 
         )%>%
         layout(
-            title ="Trends of cumulative mortality by age group",
-            yaxis = list(title = "Mortality (per 100 confirmed cases)",
+            title ="Trends of cumulative case fatality rate by age group",
+            yaxis = list(title = "Case fatality rate (%)",
                          titlefont=list(size=10))
             )
 
@@ -833,7 +850,7 @@ latestpediatric<-dtapediatric%>%filter(latest==TRUE)%>%
     select(date)%>%summarize_all(funs(mean))
 ```
 
-Compared to other age groups, incidence rates are much lower among those under 20 (See Question 3). There have been `r deaths019` deaths reported in these age groups, and mortality rates are also the lowest among all age groups (See Question 4). 
+Compared to other age groups, incidence rates are much lower among those under 20 (See Question 3). There have been `r deaths019` deaths reported in these age groups, and case fatality rates are also the lowest among all age groups (See Question 4). 
 
 Still, new detailed data from Korea CDC give some information about cases among children younger than 18 years of age. As of `r latestpediatric`, incidence rate by detailed age group is shown below. Older children have higher infection rates.  
 
@@ -975,27 +992,27 @@ plot_ly(dta, x=~date,
 
 ```{r}
 latestbyage<-max(dtabyage$date)
-mortality80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
-    select(mortality)%>%summarize_all(funs(mean))
-mortality70<-dtabyage%>%filter(latest==TRUE & age==70)%>%
-    select(mortality)%>%summarize_all(funs(mean))
+cfr80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
+    select(cfr)%>%summarize_all(funs(mean))
+cfr70<-dtabyage%>%filter(latest==TRUE & age==70)%>%
+    select(cfr)%>%summarize_all(funs(mean))
 totaldeaths<-dtabyage %>% filter(latest==TRUE) %>% 
     select(deaths) %>% summarize_all(funs(sum))
 
 totalcases<- dtanewcasebyday %>% 
     select(newconfirmedcases) %>% summarize_all(funs(sum))
 
-mortalityrate<-round(totaldeaths*100 / totalcases, 1)
+cfr<-round(totaldeaths*100 / totalcases, 1)
 ```
 
-Among those who have COVID, __mortality rate among the elderly with COVID is very high: `r mortality80`% for those who are 80 or older, and `r mortality70`% for those who are between 70-79__. 
+Among those who have COVID, __mortality rate among the elderly with COVID is very high: `r cfr80`% for those who are 80 or older, and `r cfr70`% for those who are between 70-79__. 
 
-Again, this is the case _under a very aggressive trace-test-isolate strategy_, but with no nation wide lock down. As of `r latestbyage`, a total of `r totaldeaths` people with COVID have died, __`r mortalityrate`% among all COVID cases__. 
+Again, this is the case _under a very aggressive trace-test-isolate strategy_, but with no nation wide lock down. As of `r latestbyage`, a total of `r totaldeaths` people with COVID have died, __`r cfr`% among all COVID cases__. 
 
 There are news articles about extremely over-burdened health systems especially in Daegu. I've read a few mortality case on the newspaper while he/she was waiting for hospital admission, and patients from Daegu and a surrounding province being transferred to other less-affected provinces. However, my _impression_ (as a public health trained reader) is that most severe cases do receive treatment at hospitals. I'm looking for more systematic data on health systems' capacity and response.  
 ```{r plotmortality, results='asis', fig.align="left", out.width="600px"}
 dta<-dtabyage%>%filter(latest==TRUE)
-plot_ly(dta, x=dta$agegroup, y=dta$mortality, 
+plot_ly(dta, x=dta$agegroup, y=dta$cfr, 
         mode = 'marker',
         transforms = list(
             list(
@@ -1005,9 +1022,9 @@ plot_ly(dta, x=dta$agegroup, y=dta$mortality,
             )
         ) %>%
         layout(
-            title = "Mortality rate (%) among confirmed COVID-19 cases, by age group",
+            title = "Case fatality rate by age group",
             xaxis = list(title = "Age group"),
-            yaxis = list(title = "Mortality per 100 COVID-19 cases"))
+            yaxis = list(title = "Mortality per 100 COVID-19 cases (%)"))
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestbyage`, and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))
 

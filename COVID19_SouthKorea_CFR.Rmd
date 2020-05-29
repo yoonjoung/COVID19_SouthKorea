@@ -1,0 +1,545 @@
+---
+output:
+  html_document:
+    toc: true
+    toc_depth: 5
+    toc_float: true
+---
+```{r intro, echo=FALSE, results="hide"}
+knitr::opts_chunk$set(echo=FALSE, 
+                      message=FALSE, 
+                      comment = "", 
+                      warning=FALSE, 
+                      results="hide") 
+knitr::opts_knit$set(root.dir = "C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/")
+
+date<-as.Date(Sys.time(	), format='%d%b%Y')
+time<-Sys.time()
+
+suppressMessages(library(dplyr))
+suppressMessages(library(ggplot2))
+suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(readxl)))
+suppressMessages(library(plotly))
+suppressMessages(library(Matrix))
+suppressWarnings(suppressMessages(library(zoo)))
+suppressWarnings(suppressMessages(library(RColorBrewer))) 
+
+```
+
+```{r dataByDay}
+dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByDayNewCases")
+str(dta)
+
+    #table(dta$group)
+    #table(dta$grouplabel)
+
+dtanewcasebyday<-dta %>%
+    filter(is.na(date)==F) %>%
+    select(Date_PressRelease, date, newconfirmedcases) %>%
+    mutate(date=as.Date(date))
+
+write.csv(dtanewcasebyday, "KCOVID/KCDC_data_exported/dtanewcasebyday.csv")
+```
+
+```{r dataByAgeSex}
+dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "ByAgeSex")
+
+    #table(dta$group)
+    #table(dta$grouplabel)
+dtabyagesex<-dta %>%
+    select(Date_PressRelease, group, grouplabel, confirmedcases, deaths) %>%
+    mutate(
+        date=as.Date(Date_PressRelease, "%m/%d/%y"), 
+        deaths=as.numeric(deaths), 
+        deaths=ifelse(is.na(deaths)==T, 0, deaths),
+        grouplabel=ifelse(grepl("bove", grouplabel) == T, "80-", grouplabel),
+        agegroup=grouplabel, 
+        agegroup=ifelse(grouplabel=="80-", "80+", agegroup),
+        age=sapply(strsplit(grouplabel,"-"), `[`, 1), 
+        grouplabel=sapply(strsplit(grouplabel,"-"), `[`, 1), 
+        sex=grouplabel
+        ) %>%
+    arrange(Date_PressRelease, group, grouplabel)
+
+dtapopage<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear")%>%    
+    filter(is.na(pop10)==F) %>%
+    mutate(
+        age=as.character(Age), 
+        grouplabel=age, 
+        pop=pop10
+        ) %>%
+    select(grouplabel, pop)
+
+dtapopsex<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="Sex")%>%
+    filter(is.na(pop)==F) %>%
+    select(grouplabel, pop) 
+    
+dtapop<-rbind(dtapopsex, dtapopage)
+
+    #table(dtapop$grouplabel)
+    #table(dtabyagesex$grouplabel)
+
+dtabyagesex<-left_join(dtabyagesex, dtapop, by = "grouplabel") %>%
+    mutate(
+        incidence=round(100*confirmedcases/pop, 1), #per 100,000 pop
+        cfr=round(100*deaths/confirmedcases, 1),
+        latest=date==max(date), 
+        initial=date==min(date) 
+        ) 
+
+dtabyage<-dtabyagesex %>%filter(group=="age")%>% 
+    arrange(Date_PressRelease, age)
+
+dtabysex<-dtabyagesex%>%filter(group=="sex")
+
+#export to CSV for the paper 
+write.csv(dtabyagesex, "KCOVID/KCDC_data_exported/dtabyagesex.csv")
+write.csv(dtabyage, "KCOVID/KCDC_data_exported/dtabyage.csv")
+```
+
+```{r dataSummaryByDay}
+#data for all trend data: testing, incidnece, mortality 
+dtapop<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/WPP2019_KoreaPop.xlsx", sheet="FiveYear") %>%
+    filter(is.na(pop10)==F)  
+totalpop<-round(sum(dtapop$pop10)) #total population in thousand
+
+dta<-read_excel("C:/Users/YoonJoung Choi/Dropbox/0 Project/COVID19_SouthKorea/KCDC_data.xlsx", sheet = "SummaryByDay")
+    
+names(dta)<- tolower(names(dta))   
+str(dta)
+dtabyday<-dta %>%
+    filter(is.na(total)==F) %>%
+    mutate(
+        totalpop<-totalpop, 
+        date=as.Date(date), 
+        confirmed_discharged= ifelse(is.na(confirmed_discharged)==T, 0, confirmed_discharged),
+        confirmed_deceased= ifelse(is.na(confirmed_deceased)==T, 0, confirmed_deceased),
+        confirmed_isolated= ifelse(is.na(confirmed_isolated)==T, confirmed_total, confirmed_isolated),
+        confirmed_total= ifelse(is.na(confirmed_total)==T, confirmed_discharged + confirmed_isolated + confirmed_deceased , confirmed_total),
+        piu_total= ifelse(is.na(piu_total)==T, piu_beingtested+piu_testednegative, piu_total)
+        ) %>%
+    arrange(date) %>%
+    mutate(
+        test=lead(total)-total, #new tests in each day
+        testpositive=lead(confirmed_total)-confirmed_total, #new positive in each day
+        cfr=round(100*confirmed_deceased / confirmed_total, 1), #cumulative CFR (%)
+        incidence=round(100*confirmed_total/totalpop, 1) #cumulative incidence per 100,000 population 
+        )
+
+#export to CSV for the paper 
+write.csv(dtabyday, "KCOVID/KCDC_data_exported/dtabyday.csv")
+```
+
+#####__COVID-19 CFR in South Korea: further investigation__ 
+
+(Updated: `r time` EDT)  
+
+---
+
+####__1. Trends of testing and new cases__
+
+```{r plottest, results="asis", fig.align="left", out.width="800px"}
+dta<-left_join(dtabyday, dtanewcasebyday, by = "date")%>%
+    arrange(date)%>%
+    mutate(positiverate=round(100*(newconfirmedcases/test), 1),
+            positiveratesmooth =round(c(NA,NA,NA,rollmean(positiverate, 7),NA,NA,NA), 5), 
+            positiveratesmooth =ifelse(positiveratesmooth<0,  0, positiveratesmooth)
+            )
+
+plot_ly(dta, x=~date, 
+        y=~test, name="Tests per day",
+        type='bar',  
+        marker=list(color = c( "#8DB9D9"), opacity=1, size=2)
+        ) %>%
+    add_lines(
+        y=~positiveratesmooth, name="Positive rate", 
+        marker=list(color = "black"),
+        line=list(color = "black"),
+        yaxis='y2')%>%
+    add_segments(x = min(dta$date), xend = max(dta$date), 
+                 y = 10, yend = 10,yaxis='y2', 
+                 marker = list(color = "gray",size = 2, dash="dot"),
+                 line= list(color = "gray"),
+                 showlegend=FALSE)%>%
+    layout(
+        title = c("Trend of daily tests and new cases"),
+        xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
+        yaxis = list(title = "Number of tests", 
+                     range=c(0, 20000),
+                     side="left", showgrid = FALSE ),
+        yaxis2 = list(title = "Positive rate (%)", 
+                      range=c(0, 20),
+                      overlaying='y',  
+                      side="right", showgrid = FALSE),
+        margin = list(b = 100, r=100), 
+        legend=list(orientation="v", xanchor = "left", yanchor = "center", 
+                    x = 0.1, y = 0.8) 
+        
+        )    
+```
+
+---
+
+```{r plotnewtrend, results="asis", fig.align="left", out.width="800px"}
+latestsummary<- dtanewcasebyday %>% 
+    select(date) %>% summarize_all(funs(max))
+
+dtafig<-dtanewcasebyday%>%
+    mutate(
+        newconfirmedcasessmooth =c(NA,NA,NA,rollmean(newconfirmedcases, 7),NA,NA,NA), 
+        newconfirmedcasessmooth = round(newconfirmedcasessmooth, 1),
+        startdate=as.Date("2020-02-23"),
+        peakdate=as.Date("2020-03-03"), 
+        enddate=as.Date("2020-03-12") 
+        )
+              
+shapelist<-list(
+            list(
+                type = "rect",  fillcolor = "#f03b20", 
+                line = list(color = "#f03b20"), opacity = 0.2,
+                x0=min(dtafig$startdate), x1=max(dtafig$peakdate, na.rm = TRUE),xref = "x",
+                y0=0,y1=1000, yref = "y") , 
+            list(
+                type = "rect",  fillcolor = "#fd8d3c", 
+                line = list(color = "#fd8d3c"), opacity = 0.2,
+                x0=min(dtafig$peakdate, na.rm = TRUE), x1=max(dtafig$enddate, na.rm = TRUE),xref = "x",
+                y0=0,y1=1000, yref = "y" ),
+            list(
+                type = "rect",  fillcolor = "#fed976", 
+                line = list(color = "#fed976"), opacity = 0.2,
+                x0=max(dtafig$enddate, na.rm = TRUE), x1=max(dtafig$date),xref = "x",
+                y0=0,y1=1000, yref = "y" )
+            )
+  
+plot_ly(dtafig, x=~date, 
+        y=~newconfirmedcases, name="New cases", 
+        type='bar', 
+        marker=list(color = c( "lightgray"), size = 1),
+        line=list(color = c( "lightgray"))
+        ) %>%
+    add_trace(
+        y=~newconfirmedcasessmooth, name="New cases, 7-day rolling average",
+        type='scatter',mode = 'lines', 
+        marker=list(color = c( "black"), size = 1),
+        line=list(color = c( "black"))
+        )%>%
+    add_segments(x = as.Date("2020-01-20"), xend = max(date), 
+                 y = 154, yend = 154, 
+                 marker = list(color = "black", size = 2.2),
+                 line= list(color = "black", dash = 'dot'),
+                 showlegend=FALSE)%>%
+    add_annotations(x = as.Date("2020-04-05"), y = 250, yaxis='y',
+                    text="Number of new cases",
+                    showarrow = FALSE, 
+                    font = list(color = "black", size = 12))%>%        
+    add_annotations(x = as.Date("2020-04-05"), y = 220, yaxis='y',
+                    text="at the start of the first wave",
+                    showarrow = FALSE, 
+                    font = list(color = "black", size = 12))%>%        
+    add_annotations(x = as.Date("2020-04-05"), y = 190, yaxis='y',
+                    text="(154 per day)",
+                    showarrow = FALSE, 
+                    font = list(color = "black", size = 12))%>%        
+    layout(
+        shapes=shapelist, 
+        title = c("Trend of new cases before, during, and after the first wave"),
+        xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
+        yaxis = list(title = "New cases", 
+                     range=c(0,1000)),
+        margin = list(b = 100, r=100), 
+        legend=list(orientation="h", xanchor = "center", yanchor = "center", 
+                    x = 0.5, y = -0.1) 
+        )
+
+```
+
+_Note: Three phases (red/orange/yellow shades) based on the trend of new concirmed cases. [See here for more information on that classification](https://medium.com/@yj.choi.isquared/flattening-covid-19-curve-in-south-korea-and-comparison-among-oecd-countries-singapore-and-taiwan-ae211a5645c9)_.
+
+```{r plotincidencecfrtrend, results="asis", fig.align="left", out.width="800px"}
+dtafig<-dtabyday%>%select(date, cfr, incidence)
+#dta<-dtabyday%>%filter(cfr>0)%>%select(date, cfr, incidence)
+dtafig$incidence<-dtafig$incidence/10
+
+plot_ly(dtafig, x=~date, y=~incidence, 
+        type = 'bar', name="Incidence rate (per million population)",
+        marker = list(color = "rgb(204,204,204)")) %>%
+        add_lines(y = ~cfr, name = "Case fatality rate (per 100 cases)" ,
+                  marker = list(color = "rgb(253,141,60)")) %>%
+        layout(
+            title = "Trends of cumulative incidence and case fatality rates by day",
+            yaxis = list(title="", range=c(0, 2.5)),  
+            xaxis = list(  
+                         tickfont = list(size=10)), 
+            legend = list(orientation = 'v',x = 0.1, y = 0.9) 
+            )
+```
+
+---
+
+####__2. Decomposing age composition and mortality risk by age__ 
+
+#####__2.1. Trends of age-specific incidence rates and CFR__
+
+```{r plotincidencetrendbyage, results="asis", fig.align="left", out.width="700px"}
+
+dtasorted<-dtabyage %>%
+    select(date, age, incidence) %>%
+    mutate(
+        age=paste0("incidence",age)
+    ) %>%
+    arrange(date, age)
+#head(dtasorted, 15)
+
+dta<-dtasorted %>% 
+    spread(age, incidence, fill = NA, convert = FALSE) 
+#head(dta, 20)
+#str(dta)
+
+fig <- plot_ly(dta, x=~date, y=~incidence0, name = "0-9", 
+               type = 'scatter', mode='lines',
+               line = list(color = c( "rgb(204,236,230)"))) %>% 
+    add_trace(y = ~incidence10, name = "10-19", line = list(color = c( "rgb(153,216,201)"))) %>% 
+    add_trace(y = ~incidence20, name = "20-29", line = list(color = c( "rgb(102,194,164)"))) %>% 
+    add_trace(y = ~incidence30, name = "30-39", line = list(color = c( "rgb(65,174,118)"))) %>% 
+    add_trace(y = ~incidence40, name = "40-49", line = list(color = c( "rgb(35,139,69)"))) %>% 
+    add_trace(y = ~incidence50, name = "50-59", line = list(color = c( "rgb(0,109,44)"))) %>% 
+    add_trace(y = ~incidence60, name = "60-69", line = list(color = c( "rgb(0,68,27)"))) %>% 
+    add_trace(y = ~incidence70, name = "70-79", line = list(color = c("#FF9900"), width=4)) %>% 
+    add_trace(y = ~incidence80, name = "80+", line = list(color = c("#CC0000"), width=4)) %>% 
+    layout(
+        title ="Trends of cumulative incidence rate by age group",
+        yaxis = list(title = "Number of confirmed cases (per 100000 population)",
+                     titlefont=list(size=12),
+                     type="log"), 
+        legend = list(font=list(size=10)) 
+        ) 
+
+fig
+```
+
+```{r plotmortalitytrendbyage, results="asis", fig.align="left", out.width="800px"}
+
+panel <- . %>% 
+    plot_ly(x=~date, 
+            y=~cfr, name="CFR",
+            type = 'scatter', mode = 'lines',
+            line=list(color = c( "red"))
+            ) %>%
+    add_annotations(
+        text = ~unique(agegroup),
+        x = 0.5, y = 0.9, xref = "paper", yref = "paper",    
+        xanchor = "center", yanchor = "bottom", showarrow = FALSE,
+        font = list(size = 12)
+        ) %>%
+    layout(
+        showlegend = FALSE,
+        title=c("Trend of case fatality rate by age group"),
+        xaxis=list(title = "Date", tickfont = list(size=8)),
+        yaxis=list(title = "Case fatality rate (%)", 
+                   range=c(0.2, upperrange)
+                   )
+        
+        )
+
+upperrange<-round(max(dtabyage$cfr)+1) 
+
+dtabyage%>%filter(age>=40)%>%
+    group_by(agegroup) %>%
+    do(p = panel(.)) %>%
+    subplot(nrows = 1, shareY = TRUE) 
+```
+
+```{r plottrendbyage, results="asis", fig.align="left", out.width="800px"}
+
+panel <- . %>% 
+    plot_ly(x=~date, 
+            y=~incidence, name="Incidence per 100,000",
+            type = 'scatter', mode = 'lines',
+            line=list(color = c( "blue"))
+            ) %>%
+    add_lines(
+            y=~cfr, name="CFR",
+            line=list(color = "red"),
+            yaxis='y2'
+            ) %>%
+    add_annotations(
+        text = ~unique(agegroup),
+        x = 0.5, y = 0.95, xref = "paper", yref = "paper",    
+        xanchor = "center", yanchor = "bottom", showarrow = FALSE,
+        font = list(size = 12)
+        ) %>%
+    layout(
+        showlegend = FALSE,
+        title=c("Trend of incidence and case fatality rates by age group"),
+        xaxis=list(title = "Date", tickfont = list(size=8)),
+        yaxis = list(title = "Incidence rate (per 100,000 population)", 
+                     range=c(0, 30),
+                     side="left"),
+        yaxis2=list(title = "Case fatality rate (%)", 
+                    range=c(0, 30),
+                    side="right")
+                   )
+
+dtabyage%>%filter(age>=40)%>%
+    group_by(agegroup) %>%
+    do(p = panel(.)) %>%
+    subplot(nrows = 1, shareY = TRUE) 
+```
+
+#####__2.2. Changes in composition by age: confirmed COVID-19 cases and deahs__
+
+```{r plotagecomposition, results="asis", fig.align="left", out.width="800px"}
+#cases
+temp <- dtabyage%>%select(date, confirmedcases)%>%
+    group_by(date)%>%summarize_all(funs(sum))%>%
+    mutate(total=confirmedcases)%>%select(date, total)
+
+dtafig<-left_join(dtabyage, temp, by = "date") %>% 
+    select(date, agegroup, confirmedcases, total) %>% 
+    mutate(
+        pct=round(100*confirmedcases/total,1)    
+    )
+
+figcases<-dtafig %>% group_by(agegroup) %>% 
+    arrange(date) %>%
+    plot_ly( x = ~date, y = ~pct, type = "bar",
+             color= ~agegroup, 
+             colors = brewer.pal(length(unique(dtafig$agegroup)),
+                                "Spectral")
+             ) %>%
+    layout(
+        title ="Age pattern of confirmed cases over time",
+        yaxis = list(title = "Percent of confirmed cases",
+                     titlefont=list(size=12)), 
+        legend = list(font=list(size=10)),
+        barmode = 'stack'
+        ) 
+
+#deaths
+temp <- dtabyage%>%select(date, deaths)%>%
+    group_by(date)%>%summarize_all(funs(sum))%>%
+    mutate(total=deaths)%>%select(date, total)
+
+dtafig<-left_join(dtabyage, temp, by = "date") %>% 
+    select(date, agegroup, deaths, total) %>% 
+    mutate(
+        pct=round(100*deaths/total,1)    
+    )
+
+figdeaths<-dtafig %>% group_by(agegroup) %>% 
+    arrange(date) %>%
+    plot_ly( x = ~date, y = ~pct, type = "bar",
+             color= ~agegroup, 
+             colors = brewer.pal(length(unique(dtafig$agegroup)),
+                                "Spectral")
+             ) %>%
+    layout(
+        title ="Age pattern of deaths over time",
+        yaxis = list(title = "Percent of deaths",
+                     titlefont=list(size=12)), 
+        legend = list(font=list(size=10)),
+        barmode = 'stack'
+        ) 
+
+
+subplot(style(figcases, 
+              showlegend = FALSE
+              ), 
+        style(figdeaths, 
+              legend = list(x = 1.05, y = 0.5, font=list(size=10))
+              ),
+        nrows=1, margin = 0.05, shareY = FALSE, titleY = TRUE
+        )
+
+
+
+```
+
+---
+
+####__3. Decomposing sex composition and mortality risk by sex__
+
+#####__3.1. Trends of sex-specific incidence rates and CFR__ (coming soon)
+
+#####__3.2. Changes in composition by sex: confirmed COVID-19 cases and deaths__
+
+```{r plotsexcomposition, results="asis", fig.align="left", out.width="800px"}
+### cases
+temp <- dtabysex%>%filter(group=="sex")%>%
+    select(date, confirmedcases)%>%
+    group_by(date)%>%summarize_all(funs(sum))%>%
+    mutate(total=confirmedcases)%>%select(date, total)
+
+dtafig<-left_join(dtabysex, temp, by = "date") %>% 
+    select(date, sex, confirmedcases, total) %>% 
+    mutate(
+        pct=round(100*confirmedcases/total,1)    
+    )
+
+figcases<-dtafig %>% group_by(sex) %>% 
+    arrange(date) %>%
+    plot_ly( x = ~date, y = ~pct, type = "bar",
+             color= ~sex, 
+             colors = brewer.pal(length(unique(dtafig$sex)),
+                                "Spectral")
+             ) %>%
+    layout(
+        title ="Sex pattern of confirmed cases over time",
+        yaxis = list(title = "Percent of confirmed cases",
+                     titlefont=list(size=12)), 
+        legend = list(font=list(size=10)),
+        barmode = 'stack'
+        ) 
+
+### deaths
+temp <- dtabysex%>%filter(group=="sex")%>%
+    select(date, deaths)%>%
+    group_by(date)%>%summarize_all(funs(sum))%>%
+    mutate(total=deaths)%>%select(date, total)
+
+dtafig<-left_join(dtabysex, temp, by = "date") %>% 
+    select(date, sex, deaths, total) %>% 
+    mutate(
+        pct=round(100*deaths/total,1)    
+    )
+
+figdeaths<-dtafig %>% group_by(sex) %>% 
+    arrange(date) %>%
+    plot_ly( x = ~date, y = ~pct, type = "bar",
+             color= ~sex, 
+             colors = brewer.pal(length(unique(dtafig$sex)),
+                                "Spectral")
+             ) %>%
+    layout(
+        title ="Sex pattern of deaths over time",
+        yaxis = list(title = "Percent of deaths",
+                     titlefont=list(size=12)), 
+        legend = list(font=list(size=10)),
+        barmode = 'stack'
+        ) 
+
+subplot(style(figcases, 
+              showlegend = FALSE
+              ), 
+        style(figdeaths, 
+              legend = list(x = 1.05, y = 0.5, font=list(size=10))
+              ),
+        nrows=1, margin = 0.05, shareY = FALSE, titleY = TRUE
+        )
+
+```
+
+---
+
+__Data source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/)   
+_Note_: Age-specific mortality data were first released on March, 3rd, and it has been updated daily since March 11th. 
+
+---
+
+<p style="color:gray">
+More questions and data coming soon, as I continue digging the awesome KCDC website...    
+See [GitHub](https://github.com/yoonjoung/COVID19_SouthKorea) for data, code, and more information.  
+For typos, errors, and questions, contact me at [www.isquared.global](https://www.iSquared.global/YJ). 
+
+_Making Data Delicious, One Byte at a Time_, in good times and bad times.</p>

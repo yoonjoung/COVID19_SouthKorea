@@ -337,10 +337,11 @@ panel <- . %>%
   layout(
     showlegend = FALSE,
     xaxis=list(title = "Date",  
-             font=list(size=10),
-             tickfont = list(size=8) 
-             ),
-    yaxis=list(title = "incidence rate (per 100,000)"))
+               font=list(size=10),
+               tickfont = list(size=8) 
+               ),
+    yaxis=list(title = "incidence rate (per 100,000)")
+  )
 
 
 dtafig<-dtabyregion%>%filter(region!="Airport")
@@ -545,7 +546,7 @@ plot_ly(dtafig, x=~date, y=~cfr,
             xaxis = list(title = "Date",  
                          tickfont = list(size=10)),
             yaxis = list(title = "Deaths per 100 cases (%)"),
-            legend = list(x = 0.1, y = 0.7, 
+            legend = list(x = 0.1, y = 0.95, 
                           title=list(text='Provinces*'))
             )
 ```
