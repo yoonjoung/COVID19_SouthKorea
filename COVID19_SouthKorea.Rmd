@@ -56,7 +56,11 @@ dtabyagesex<-dta %>%
         agegroup=grouplabel, 
         agegroup=ifelse(grouplabel=="80-", "80+", agegroup),
         age=sapply(strsplit(grouplabel,"-"), `[`, 1), 
-        grouplabel=sapply(strsplit(grouplabel,"-"), `[`, 1) 
+        grouplabel=sapply(strsplit(grouplabel,"-"), `[`, 1))%>%
+    filter(is.na(Date_PressRelease)==FALSE)%>%
+    mutate( 
+        latest=date==max(date), 
+        initial=date==min(date) 
         ) %>%
     arrange(Date_PressRelease, group, grouplabel)
 
@@ -81,9 +85,7 @@ dtapop<-rbind(dtapopsex, dtapopage)
 dtabyagesex<-left_join(dtabyagesex, dtapop, by = "grouplabel") %>%
     mutate(
         incidence=round(100*confirmedcases/pop, 1), #per 100,000 pop
-        cfr=round(100*deaths/confirmedcases, 1),
-        latest=date==max(date), 
-        initial=date==min(date) 
+        cfr=round(100*deaths/confirmedcases, 3)
         ) 
 
 dtabyage<-dtabyagesex %>%
@@ -120,7 +122,7 @@ dtabyday<-dta %>%
     mutate(
         test=lead(total)-total, #new tests in each day
         testpositive=lead(confirmed_total)-confirmed_total, #new positive in each day
-        cfr=round(100*confirmed_deceased / confirmed_total, 1), #cumulative CFR (%)
+        cfr=round(100*confirmed_deceased / confirmed_total, 2), #cumulative CFR (%)
         incidence=round(100*confirmed_total/totalpop, 1) #cumulative incidence per 100,000 population 
         )
 
@@ -312,7 +314,7 @@ dtabyregion<-left_join(dtabyregion, dtabyregiondeaths, by = c("region", "date"))
 
 dtabyregion<-dtabyregion %>% 
     mutate(
-        cfr =round(100* deaths/cases, 1), #CFR %
+        cfr =round(100* deaths/cases, 3), #CFR %
         region=ifelse(region=="gg", "Gyeonggi", region),
         region=ifelse(region=="gw", "Gangwon", region),
         region=ifelse(region=="cb", "Chungbuk", region),
@@ -446,7 +448,7 @@ This is one of common questions that I've received, as we see [huge variation in
 
 In South Korea, however, __the entire country is under one same strategy for infectious diseases control__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or case fatality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). About 80% of total confirmed cases have occurred in Daegu and Gyeungbuk province. 
 
-* In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected - compared to below 7 per 100,000 population in all other regions.  
+* In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected - compared to below 10 in all other regions.  
 
 * In Gyungbuk, case fatality rate has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). case fatality rate is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
 
@@ -454,14 +456,14 @@ It is notable that the outbreak in Daegu and Gyungbuk did not spread throughout 
 
 _Hover over each figure to see values and more options._
 ```{r plotbyregion, results="asis", fig.align="left", out.width="800px"}
-dtafig<-dtabyregion%>%filter(date==max(date))
+dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Airport")%>%select(incidence, region)
 
 dtafig$region<-factor(dtafig$region, 
                     levels = unique(dtafig$region) 
                     [order(dtafig$incidence, decreasing = TRUE)])
 
 figincidencerate<-plot_ly(dtafig, x=~region, y=~incidence, type = 'bar',
-              name= "Province", marker = list(color = c('rgb(146,197,222)',  'rgb(146,197,222)', 'rgb(146,197,222)',"blue",  "red", 'rgb(146,197,222)','rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)')))%>% 
+              name= "Province", marker = list(color = c('rgb(146,197,222)',  'rgb(146,197,222)', 'rgb(146,197,222)', "blue",  "red", 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)', 'rgb(146,197,222)')))%>% 
     layout(
             annotations = list(x = 0.2 , y = 0.99, 
                                text = "<b>COVID-19 incidence by region</b>", 
@@ -486,7 +488,7 @@ dtafig<-dtabyregion%>%
         cases=sum(cases),
         deaths=sum(deaths)
     )%>%ungroup()%>%
-    mutate(cfr=round(100*deaths/cases, 1))%>%
+    mutate(cfr=round(100*deaths/cases, 3))%>%
     arrange(date, region3, region)%>%
     filter(region3!=lag(region3))
 

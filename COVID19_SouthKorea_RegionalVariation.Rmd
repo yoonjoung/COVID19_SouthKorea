@@ -150,7 +150,7 @@ dtabyregion<-left_join(dtabyregion, dtabyregiondeaths, by = c("region", "date"))
 
 dtabyregion<-dtabyregion %>% 
     mutate(
-        cfr =round(100* deaths/cases, 1), #CFR %
+        cfr =round(100* deaths/cases, 2), #CFR %
         region=ifelse(region=="gg", "Gyeonggi", region),
         region=ifelse(region=="gw", "Gangwon", region),
         region=ifelse(region=="cb", "Chungbuk", region),

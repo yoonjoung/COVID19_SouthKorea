@@ -2,9 +2,9 @@
 output:
   html_document:
     toc: true
-    toc_depth: 5
     toc_float: true
 ---
+
 ```{r intro, echo=FALSE, results="hide"}
 knitr::opts_chunk$set(echo=FALSE, 
                       message=FALSE, 
@@ -83,7 +83,7 @@ dtapop<-rbind(dtapopsex, dtapopage)
 dtabyagesex<-left_join(dtabyagesex, dtapop, by = "grouplabel") %>%
     mutate(
         incidence=round(100*confirmedcases/pop, 1), #per 100,000 pop
-        cfr=round(100*deaths/confirmedcases, 1),
+        cfr=round(100*deaths/confirmedcases, 2),
         latest=date==max(date), 
         initial=date==min(date) 
         ) 
@@ -123,7 +123,7 @@ dtabyday<-dta %>%
     mutate(
         test=lead(total)-total, #new tests in each day
         testpositive=lead(confirmed_total)-confirmed_total, #new positive in each day
-        cfr=round(100*confirmed_deceased / confirmed_total, 1), #cumulative CFR (%)
+        cfr=round(100*confirmed_deceased / confirmed_total, 2), #cumulative CFR (%)
         incidence=round(100*confirmed_total/totalpop, 1) #cumulative incidence per 100,000 population 
         )
 
@@ -387,9 +387,73 @@ dtabyage%>%filter(age>=40)%>%
     subplot(nrows = 1, shareY = TRUE) 
 ```
 
-#####__2.2. Changes in composition by age: confirmed COVID-19 cases and deahs__
+
+
+#####__2.2. Composition by age: population, confirmed COVID-19 cases, and COVID-19 deaths__
 
 ```{r plotagecomposition, results="asis", fig.align="left", out.width="800px"}
+#Population
+temp1 <- dtabyage%>%select(date, age, agegroup, pop)%>%
+    filter(date==max(date)) %>%     
+    mutate(
+        total=sum(pop), 
+        pct=round(100*pop/total,1)  ,
+        group="1. Population"  
+    )%>%select(age, agegroup, group, pct)
+
+#cases
+temp <- dtabyage%>%select(date, confirmedcases)%>%
+    group_by(date)%>%summarize_all(funs(sum))%>%
+    mutate(total=confirmedcases)%>%select(date, total)
+
+temp2<-left_join(dtabyage, temp, by = "date") %>% 
+    select(date, age, agegroup, confirmedcases, total) %>% 
+    filter(date==max(date)) %>%     
+    mutate(
+        pct=round(100*confirmedcases/total,1)    ,
+        group="2. Cases"
+    )%>%select(age, agegroup, group, pct)
+
+
+#deaths
+temp <- dtabyage%>%select(date, deaths)%>%
+    group_by(date) %>%summarize_all(funs(sum))%>%
+    mutate(total=deaths)%>%select(date, total)
+
+temp3<-left_join(dtabyage, temp, by = "date") %>% 
+    select(date, age, agegroup, deaths, total) %>% 
+    filter(date==max(date)) %>%     
+    mutate(
+        pct=round(100*deaths/total,1)   ,
+        group="3. Deaths"
+    )%>%select(age, agegroup, group, pct)
+
+# merge all three
+dtafig<-rbind(temp1, temp2, temp3) 
+
+dtafig %>% 
+    plot_ly( x=~group, y = ~pct, type = "bar",
+             color= ~agegroup, 
+             colors = brewer.pal(length(unique(dtafig$agegroup)),
+                                "Spectral")
+             ) %>% 
+    layout(
+        title ="Age pattern of population, cases, and deaths",
+        yaxis = list(title = "Percent",
+                     titlefont=list(size=12)), 
+        yaxis = list(title = ""),
+        legend = list(font=list(size=10)),
+        barmode = 'stack'
+        ) 
+
+
+
+```
+
+
+#####__2.3. Changes in composition by age: confirmed COVID-19 cases and COVID-19 deaths__
+
+```{r plotagecompositiontrend, results="asis", fig.align="left", out.width="800px"}
 #cases
 temp <- dtabyage%>%select(date, confirmedcases)%>%
     group_by(date)%>%summarize_all(funs(sum))%>%
@@ -462,9 +526,70 @@ subplot(style(figcases,
 
 #####__3.1. Trends of sex-specific incidence rates and CFR__ (coming soon)
 
-#####__3.2. Changes in composition by sex: confirmed COVID-19 cases and deaths__
+#####__3.2. Composition by sex: population, confirmed COVID-19 cases, and COVID-19 deaths__
 
 ```{r plotsexcomposition, results="asis", fig.align="left", out.width="800px"}
+#Population
+temp1 <- dtabysex%>%select(date, sex, pop)%>%
+    filter(date==max(date)) %>%     
+    mutate(
+        total=sum(pop), 
+        pct=round(100*pop/total,1)  ,
+        group="1. Population"  
+    )%>%select(sex, group, pct)
+
+#cases
+temp <- dtabysex%>%select(date, confirmedcases)%>%
+    group_by(date)%>%summarize_all(funs(sum))%>%
+    mutate(total=confirmedcases)%>%select(date, total)
+
+temp2<-left_join(dtabysex, temp, by = "date") %>% 
+    select(date, sex, confirmedcases, total) %>% 
+    filter(date==max(date)) %>%     
+    mutate(
+        pct=round(100*confirmedcases/total,1)    ,
+        group="2. Cases"
+    )%>%select(sex, group, pct)
+
+
+#deaths
+temp <- dtabysex%>%select(date, deaths)%>%
+    group_by(date) %>%summarize_all(funs(sum))%>%
+    mutate(total=deaths)%>%select(date, total)
+
+temp3<-left_join(dtabysex, temp, by = "date") %>% 
+    select(date, sex, deaths, total) %>% 
+    filter(date==max(date)) %>%     
+    mutate(
+        pct=round(100*deaths/total,1)   ,
+        group="3. Deaths"
+    )%>%select(sex, group, pct)
+
+# merge all three
+dtafig<-rbind(temp1, temp2, temp3) 
+
+dtafig %>% 
+    plot_ly( x=~group, y = ~pct, type = "bar",
+             color= ~sex, 
+             colors = brewer.pal(length(unique(dtafig$sex)),
+                                "Spectral")
+             ) %>% 
+    layout(
+        title ="Age pattern of population, cases, and deaths",
+        yaxis = list(title = "Percent",
+                     titlefont=list(size=12)), 
+        yaxis = list(title = ""),
+        legend = list(font=list(size=10)),
+        barmode = 'stack'
+        ) 
+
+
+
+```
+
+#####__3.3. Changes in composition by sex: confirmed COVID-19 cases and deaths__
+
+```{r plotsexcompositiontrend, results="asis", fig.align="left", out.width="800px"}
 ### cases
 temp <- dtabysex%>%filter(group=="sex")%>%
     select(date, confirmedcases)%>%
