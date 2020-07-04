@@ -502,13 +502,13 @@ figcfr<-plot_ly(dtafig, x=~date, y=~cfr,
             xaxis = list(title = "Date",  
                          tickfont = list(size=10)),
             yaxis = list(title = "Deaths per 100 cases (%)", range=c(0, 3.5)),
-            legend = list(x = 0.55, y = 0.95)
+            legend = list(x = 0.75, y = 0.65)
             )
 
 subplot(style(figincidencerate, showlegend = FALSE), 
         style(figcfr, 
-              annotations= list(x = 0.55, y = 0.99, xanchor = 'left'), 
-              legend = list(x = 0.55, y = 0.95)),
+              annotations= list(x = 0.55,  y = 0.99, xanchor = 'left'), 
+              legend = list(x = 0.75, y = 0.65)),
             nrows=1, shareY = FALSE, titleY = TRUE)
 
 ```
@@ -780,7 +780,7 @@ _Hover over each figure to see values and more options._
 ```{r plotmortalitytrendbyage, results="asis", fig.align="left", out.width="800px"}
 
 temp<-dtabyage%>%filter(latest==TRUE & age==80)%>%select(cfr)%>%summarize_all(funs(mean))
-upperrange<-round(temp$cfr+1)
+upperrange<-round(temp$cfr+5)
 
 dta50<-dtabyage%>%select(date, agegroup, cfr)%>%filter(agegroup=="50-59")
 dta60<-dtabyage%>%select(date, agegroup, cfr)%>%filter(agegroup=="60-69")
@@ -824,7 +824,8 @@ fig<-subplot(style(fig50, legend = list(x = 0.15, y = 0.90)),
         layout(
             title ="Trends of cumulative case fatality rate by age group",
             yaxis = list(title = "Case fatality rate (%)",
-                         titlefont=list(size=10))
+                         titlefont=list(size=10),
+                         range=c(0.2, 30))
             )
 
 ```
@@ -951,7 +952,7 @@ fig2<-plot_ly(dta, x=~date,
                       side="right", showgrid = FALSE),
         margin = list(b = 100, r=100), 
         legend=list(orientation="v", xanchor = "left", yanchor = "center", 
-                    x = 0.1, y = 0.8) 
+                    x = 0.08, y = 0.9) 
         
         )    
 
@@ -982,7 +983,7 @@ plot_ly(dta, x=~date,
                       side="right", showgrid = FALSE),
         margin = list(b = 100, r=100), 
         legend=list(orientation="v", xanchor = "left", yanchor = "center", 
-                    x = 0.1, y = 0.8) 
+                    x = 0.08, y = 0.9) 
         
         )    
 ```
@@ -998,6 +999,10 @@ cfr80<-dtabyage%>%filter(latest==TRUE & age==80)%>%
     select(cfr)%>%summarize_all(funs(mean))
 cfr70<-dtabyage%>%filter(latest==TRUE & age==70)%>%
     select(cfr)%>%summarize_all(funs(mean))
+
+cfr80<-round(cfr80, 1)
+cfr70<-round(cfr70, 1)
+
 totaldeaths<-dtabyage %>% filter(latest==TRUE) %>% 
     select(deaths) %>% summarize_all(funs(sum))
 
