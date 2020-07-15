@@ -432,7 +432,7 @@ plot_ly(dtafig, x=~date,
 
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030) on `r latestsummary`)   
-_Note: Three phases (red/orange/yellow shades) based on the trend of new concirmed cases. [See here for more information on that classification](https://medium.com/@yj.choi.isquared/flattening-covid-19-curve-in-south-korea-and-comparison-among-oecd-countries-singapore-and-taiwan-ae211a5645c9)_. 
+_Note: Three phases (red/orange/yellow shades) based on the trend of new confirmed cases. [See here for more information on that classification](https://medium.com/@yj.choi.isquared/flattening-covid-19-curve-in-south-korea-and-comparison-among-oecd-countries-singapore-and-taiwan-ae211a5645c9)_. 
 
 ---
 
@@ -967,7 +967,7 @@ plot_ly(dta, x=~date,
         line=list(color = "black"),
         yaxis='y2')%>%
     add_segments(x = min(dta$date), xend = max(dta$date), 
-                 y = 10, yend = 10,yaxis='y2', 
+                 y = 5, yend = 5,yaxis='y2', 
                  marker = list(color = "gray",size = 2, dash="dot"),
                  line= list(color = "gray"),
                  showlegend=FALSE)%>%

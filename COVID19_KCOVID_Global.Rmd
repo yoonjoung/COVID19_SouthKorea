@@ -491,6 +491,8 @@ plot_ly(dtafig, x=~date,
 ```{r}
 dtafig<-dtacurve%>%filter(oecd==TRUE)%>%filter(is.na(enddate)==FALSE)
 nlikeSK<-(length(unique(dtafig$country)) - 1)
+
+maxday<-max(dtafig$day)
 ```
 
 Among OECD members, `r nlikeSK` other countries also have entered the relatively stable phase, although the first wave started later. _Holding beginning of the first wave on day 0_, the following figure presents the length and height of the peak. Except in Greece and now Japan as well, the peak height is taller - slightly or substantially (e.g., Iceland). And, the length of pre and post peak phases is longer. 
@@ -512,7 +514,7 @@ dtafig<-dtacurve%>%filter(oecd==TRUE)%>%filter(is.na(enddate)==FALSE)%>%
                         tickfont = list(size=10))) 
 ```
 
-```{r plotSKlike, fig.align="left", out.width="800px"}
+```{r plotSKlike, eval=FALSE, fig.align="left", out.width="800px"}
 
 
 dtafig<-dtacurve%>%filter(oecd==TRUE)%>%filter(latestcasespp<=startcasespp)%>%
@@ -567,7 +569,7 @@ plot_ly(dtafig, x=~day, y=~Y_Australia, name = "Australia",
     layout(showlegend=TRUE,
            xaxis = list(title = "Day since start of the first wave", 
                         tickfont = list(size=10),
-                        range=c(0,100) ), 
+                        range=c(0, maxday) ), 
            yaxis = list(title = "Daily new confirmed cases per 100,000 population") 
            )
 
@@ -599,7 +601,7 @@ panel <- . %>%
     layout(
         showlegend = FALSE,
         title = c("Trend of daily new confirmed cases per 100,000 population since the first wave"),
-        xaxis=list(range=c(0,100), showgrid = FALSE), 
+        xaxis=list(range=c(0, maxday), showgrid = FALSE), 
         yaxis=list( title="", showgrid = FALSE) 
     )
 
@@ -625,7 +627,7 @@ A few patterns emerge.
 * After the peak, new cases decrease immediately and consistently in some countries (e.g., Austria), while some countries have a wide peak (e.g., Belgium) or new cases decrease slowly (e.g., United States).  
 * Some have entered the first wave, and there is no clear sign of decrease (e.g., Mexico and Chile).
 
-```{r plotSKunlikeMedium, fig.align="left", out.width="600px", out.height="300px"}
+```{r plotSKunlikeMedium, fig.align="left", out.width="800px", out.height="300px"}
 #{r plotSKunlikeMedium, results='asis', fig.align="left", out.width="600px", out.height="300px"}
 
 panel <- . %>% 
@@ -689,15 +691,17 @@ Again, the x-axis is days from the first day of phase 1. The y-axis is daily new
 
     dtafig<-dtacurve%>%filter(oecd==TRUE)%>%filter(is.na(enddate)==TRUE)
     #table(dtafig$peakcasespp)
-    
+    maxday<-max(dtafig$day)
+
     dtafig1<-dtafig%>%filter(peakcasespp<4)
     length(table(dtafig1$country))
     dtafig2<-dtafig%>%filter(peakcasespp>=4 & peakcasespp<13)
     length(table(dtafig2$country))
 
+    
 ```
 
-```{r plotSKunlike1, results="asis", fig.align="left", out.width="800px", out.height="200px"}
+```{r plotSKunlike1, results="asis", fig.align="left", out.width="800px", out.height="400px"}
 
 panel <- . %>% 
   plot_ly(x = ~day, y = ~newcasessmoothpp,
@@ -722,7 +726,7 @@ panel <- . %>%
     showlegend = FALSE,
     #title = c("Trend of daily new confirmed cases per 100,000 population since the first wave"),
     title = c(""),
-    xaxis=list(range=c(0,100)), 
+    xaxis=list(range=c(0, maxday)), 
     yaxis=list(range=c(0,4), title="") 
   )
 
@@ -733,7 +737,7 @@ dtafig<-dtacurve%>%filter(oecd==TRUE)%>%filter(latestcasespp>startcasespp)%>%fil
 dtafig%>%
     group_by(country) %>%
     do(p = panel(.)) %>%
-    subplot(nrows = 1, shareX = TRUE, shareY = TRUE)    
+    subplot(nrows = 2, shareX = TRUE, shareY = TRUE)    
 ```
 
 ```{r plotSKunlike2, results="asis", fig.align="left", out.width="800px", out.height="800px"}
@@ -761,7 +765,7 @@ panel <- . %>%
   layout(
     showlegend = FALSE,
     title = c(""),
-    xaxis=list(range=c(0,100), title=""), 
+    xaxis=list(range=c(0, maxday), title=""), 
     yaxis=list(range=c(0,15), title="") 
   )
 
@@ -775,7 +779,7 @@ dtafig%>%
     subplot(nrows = 5, shareX = TRUE, shareY = TRUE)  
 ```
 
-```{r plotSKunlike3, results="asis", fig.align="left", out.width="550px", out.height="200px"}
+```{r plotSKunlike3, results="asis", fig.align="left", out.width="800px", out.height="400px"}
 
 panel <- . %>% 
   plot_ly(x = ~day, y = ~newcasessmoothpp,
@@ -799,7 +803,7 @@ panel <- . %>%
   layout(
     showlegend = FALSE,
     title = c(""),
-    xaxis=list(range=c(0,100), title=""), 
+    xaxis=list(range=c(0, maxday), title=""), 
     yaxis=list(title="") 
   )
 
@@ -810,7 +814,7 @@ dtafig<-dtacurve%>%filter(oecd==TRUE)%>%filter(latestcasespp>startcasespp)%>%fil
 dtafig%>%
     group_by(country) %>%
     do(p = panel(.)) %>%
-    subplot(nrows = 1, shareX = TRUE, shareY = TRUE)
+    subplot(nrows = 2, shareX = TRUE, shareY = TRUE)
 ```
 
 * __In Spain, the number of new cases indeed had come down to the start level after 52 days, but then it quickly rebounded above the threshold (dotted gray line)__. Spain's example emphasizes that, even among these countries, it is important to keep the number of new infections low without any rebound.

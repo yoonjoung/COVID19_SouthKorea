@@ -158,7 +158,7 @@ plot_ly(dta, x=~date,
         line=list(color = "black"),
         yaxis='y2')%>%
     add_segments(x = min(dta$date), xend = max(dta$date), 
-                 y = 10, yend = 10,yaxis='y2', 
+                 y = 5, yend = 5,yaxis='y2', 
                  marker = list(color = "gray",size = 2, dash="dot"),
                  line= list(color = "gray"),
                  showlegend=FALSE)%>%
@@ -174,7 +174,7 @@ plot_ly(dta, x=~date,
                       side="right", showgrid = FALSE),
         margin = list(b = 100, r=100), 
         legend=list(orientation="v", xanchor = "left", yanchor = "center", 
-                    x = 0.1, y = 0.8) 
+                    x = 0.05, y = 0.9) 
         
         )    
 ```
@@ -271,7 +271,7 @@ plot_ly(dtafig, x=~date, y=~incidence,
             yaxis = list(title="", range=c(0, 2.5)),  
             xaxis = list(  
                          tickfont = list(size=10)), 
-            legend = list(orientation = 'v',x = 0.1, y = 0.9) 
+            legend = list(orientation = 'v',x = 0.05, y = 0.9) 
             )
 ```
 
