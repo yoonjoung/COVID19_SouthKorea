@@ -350,7 +350,7 @@ All data are from press release from [KCDC](https://www.cdc.go.kr/) - available 
 
 ---
 
-#####__Q 10. From "social distancing" to "distancing in daily life": keeping an eye on new cases (NEW)__
+#####__Q 10. From "social distancing" to "distancing in daily life": keeping an eye on new cases__
 
 The first wave in South Korea has been completed unequivocally. On May 6th, the government announced a major pivot in its COVID19 control, to focus on __prevention of transmission, including "distancing in daily life", and transition to new "daily life" (not the typical normal life before the pandemic though)__. It will be important to keep the level of infections _under a threshold_ to prevent, delay, and control the next wave. 
 
@@ -749,10 +749,10 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
                   marker = list(color = "rgb(253,141,60)")) %>%
         layout(
             title = "Trends of cumulative incidence and case fatality rates by day",
-            yaxis = list(title="", range=c(0, 2.5)),  
+            yaxis = list(title="", range=c(0, 3)),  
             xaxis = list(  
                          tickfont = list(size=10)), 
-            legend = list(orientation = 'v',x = 0.1, y = 0.9) 
+            legend = list(orientation = 'v',x = 0.05, y = 0.95) 
             )
 ```
 (__Source__: KCDC's [daily press release](https://www.cdc.go.kr/board/board.es?mid=&bid=0030), and UN [World Population Prospects 2019 Revision](https://population.un.org/wpp/))

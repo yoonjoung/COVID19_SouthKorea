@@ -173,6 +173,8 @@ dtabyregion<-dtabyregion %>%
 * All data are from press release from [KCDC](https://www.cdc.go.kr/) - available to the public in both Korean and English. KCDC has released regional data since March 7th.    
 * Special cities are included in provinces where they are located: Daejeon and Sejong in Chungnam province; Seoul and Inchon in Gyeonggi province; Daegu and Ulsan are included in Gyungbuk province; Busan in Gyungnam province; and Gwangju in Jeonnam province.   
 
+* NOTE: On July 20th, data reporting format has been changed. __KCDC now reports cases by local transmission vs. imported__. Based on this change, on July 20th, the cumulative number of cases dropped in all provinces, but increased in the"Airport" - aka imported cases now. See Questions 2.1 and 3, which reflect the drop/change. The total number of cases is not affected.     
+
 ---
 
 #####__1. Cumulative cases by region__ 
