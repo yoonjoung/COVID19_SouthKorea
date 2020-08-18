@@ -490,12 +490,13 @@ dtafig%>%
 ```{r,  results='asis', fig.align="left", out.width="800px"}
 dtafig<-dtabyregion%>%filter(cfr>0)%>%filter(region!="Airport")
 ncfr<-length(unique(dtafig$region))
+latestdate<-max(dtafig$date)
 ```
 
-As of `r date`, COVID-19 deaths have been reported in `r ncfr` provinces. 
+The latest mortality data by province are as of `r latestdate`. COVID-19 deaths have been reported in `r ncfr` provinces until then. 
 
 ```{r,  results='asis', fig.align="left", out.width="800px"}
-dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Airport")
+dtafig<-dtabyregion%>%filter(is.na(cfr)==FALSE)%>%filter(date==max(date))%>%filter(region!="Airport")
 
 dtafig$region<-factor(dtafig$region, 
                     levels = unique(dtafig$region) 
@@ -516,7 +517,7 @@ plot_ly(dtafig, x=~region, y=~deaths, type = 'bar')%>%
 
 #####__6. Case fatality rate by region__
 ```{r,  results='asis', fig.align="left", out.width="800px"}
-dtafig<-dtabyregion%>%filter(date==max(date))%>%filter(region!="Airport")
+dtafig<-dtabyregion%>%filter(is.na(cfr)==FALSE)%>%filter(date==max(date))%>%filter(region!="Airport")
 
 dtafig$region<-factor(dtafig$region, 
                     levels = unique(dtafig$region) 
