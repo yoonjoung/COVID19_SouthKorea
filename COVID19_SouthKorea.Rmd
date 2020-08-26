@@ -446,11 +446,9 @@ cfrGB<-dtabyregion%>%filter(date==max(date))%>%filter(region=="Gyungbuk")%>%sele
 
 This is one of common questions that I've received, as we see [huge variation in incidence rates across states and counties in the US](https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html#states). 
 
-In South Korea, however, __the entire country is under one same strategy for infectious diseases control__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or case fatality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). About 80% of total confirmed cases have occurred in Daegu and Gyeungbuk province. 
+In South Korea, however, __the entire country is under one same strategy for infectious diseases control__, even though the country is [decentralized with nine provinces and eight cities](https://en.wikipedia.org/wiki/Administrative_divisions_of_South_Korea). So it's not surprising that __there is practically no regional differences in terms of the incidence or case fatality rates, except Daegu city and Gyungbuk province (a province surrounding Daegu)__, which had [a massive outbreak related to a religious sect in late February](https://www.washingtonpost.com/world/asia_pacific/south-korea-orders-temporary-shutdown-of-messianic-church-linked-to-more-than-half-the-countrys-coronavirus-cases/2020/02/23/728278f0-5650-11ea-8efd-0f904bdd8057_story.html). Until mid August, still a majority of total confirmed cases (about 60%) have occurred in Daegu and Gyeungbuk province.  However, outbreaks in Seoul/Gyungi in mid August may shift the distribution. 
 
-* In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected - compared to below 10 in all other regions.  
-
-* In Gyungbuk, case fatality rate has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). case fatality rate is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
+* In Gyungbuk, including Daegu city, `r incidenceGB` people in 100,000 population have been infected.
 
 It is notable that the outbreak in Daegu and Gyungbuk did not spread throughout the country more widely, although the country is relatively small - about the size of Kentucky or Indiana in the US. For further regional data, [see here](https://rpubs.com/YJ_Choi/COVID19_SK_region).        
 
@@ -505,11 +503,15 @@ figcfr<-plot_ly(dtafig, x=~date, y=~cfr,
             legend = list(x = 0.75, y = 0.65)
             )
 
-subplot(style(figincidencerate, showlegend = FALSE), 
+#* In Gyungbuk, case fatality rate has increased steadily and is currently `r cfrGB` % (i.e., `r cfrGB` people out of every 100 confirmed cases have died). case fatality rate is below 1% in three other provinces (and cities in the provinces), and no death has been reported in the remaining regions. 
+
+subplotold<-subplot(style(figincidencerate, showlegend = FALSE), 
         style(figcfr, 
               annotations= list(x = 0.55,  y = 0.99, xanchor = 'left'), 
               legend = list(x = 0.75, y = 0.65)),
             nrows=1, shareY = FALSE, titleY = TRUE)
+
+figincidencerate
 
 ```
 (Note: special cities are included in provinces where they are located: ; Daejeon and Sejong in Chungnam province; Seoul and Inchon in Gyeonggi province; Daegu and Ulsan are included in Gyungbuk province; Busan in Gyungnam province; and Gwangju in Jeonnam province. For case fatality rate, Gangwon has a small number of confirmed cases and was further combined with Gyungnam.)
