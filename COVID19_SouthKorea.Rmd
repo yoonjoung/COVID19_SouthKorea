@@ -751,7 +751,7 @@ plot_ly(dta, x=dta$date, y=dta$incidence,
                   marker = list(color = "rgb(253,141,60)")) %>%
         layout(
             title = "Trends of cumulative incidence and case fatality rates by day",
-            yaxis = list(title="", range=c(0, 3)),  
+            yaxis = list(title="", range=c(0, 5)),  
             xaxis = list(  
                          tickfont = list(size=10)), 
             legend = list(orientation = 'v',x = 0.05, y = 0.95) 
@@ -781,7 +781,7 @@ Case fatality rate among the 70s has also increased but at a slower margin. Case
 _Hover over each figure to see values and more options._
 ```{r plotmortalitytrendbyage, results="asis", fig.align="left", out.width="800px"}
 
-temp<-dtabyage%>%filter(latest==TRUE & age==80)%>%select(cfr)%>%summarize_all(funs(mean))
+temp<-dtabyage%>%filter(age==80)%>%select(cfr)%>%summarize_all(funs(mean))
 upperrange<-round(temp$cfr+5)
 
 dta50<-dtabyage%>%select(date, agegroup, cfr)%>%filter(agegroup=="50-59")
@@ -916,47 +916,9 @@ dta<-left_join(dtabyday, dtanewcasebyday, by = "date")%>%
     arrange(date)%>%
     mutate(positiverate=round(100*(newconfirmedcases/test), 1),
             positiveratesmooth =round(c(NA,NA,NA,rollmean(positiverate, 7),NA,NA,NA), 5), 
-            positiveratesmooth =ifelse(positiveratesmooth<0,  0, positiveratesmooth)
+            positiveratesmooth =ifelse(positiveratesmooth<0,  0, positiveratesmooth),
+            positiveratesmooth = round(positiveratesmooth, 1)
             )
-
-fig1<-plot_ly(dta, x=dta$date, y=dta$test, 
-        type = 'bar', name='All tests' ) %>%
-        add_trace(y=dta$newconfirmedcases, name = 'Positive tests') %>%
-        layout(
-            title = "Number of tests by day",
-            xaxis = list(title = "Date", 
-                         tickfont = list(size=10)),
-            yaxis = list(title = "Number of tests"),
-            legend=list(x = 0.1, y = 0.9))
-
-fig2<-plot_ly(dta, x=~date, 
-        y=~test, name="Tests per day",
-        type='bar',  
-        marker=list(color = c( "#8DB9D9"), opacity=1)
-        
-        ) %>%
-    add_trace(
-        y=~newconfirmedcases, name="New cases per day", 
-        type='bar', 
-        marker=list(color = c( "#D98D8D"), opacity=0.5),
-        
-        yaxis='y2'
-        )%>%
-    layout(
-        title = c("Trend of daily tests and new cases"),
-        xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
-        yaxis = list(title = "Number of tests", 
-                     range=c(0, 20000),
-                     side="left", showgrid = FALSE ),
-        yaxis2 = list(title = "Number of new cases", 
-                      range=c(0, 2000),
-                      overlaying='y',  
-                      side="right", showgrid = FALSE),
-        margin = list(b = 100, r=100), 
-        legend=list(orientation="v", xanchor = "left", yanchor = "center", 
-                    x = 0.08, y = 0.9) 
-        
-        )    
 
 plot_ly(dta, x=~date, 
         y=~test, name="Tests per day",
@@ -977,15 +939,15 @@ plot_ly(dta, x=~date,
         title = c("Trend of daily tests and new cases"),
         xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
         yaxis = list(title = "Number of tests", 
-                     range=c(0, 20000),
+                     range=c(0, max(dta$test)),
                      side="left", showgrid = FALSE ),
         yaxis2 = list(title = "Positive rate (%)", 
-                      range=c(0, 20),
+                      range=c(0, max(dta$positiveratesmooth)),
                       overlaying='y',  
                       side="right", showgrid = FALSE),
         margin = list(b = 100, r=100), 
-        legend=list(orientation="v", xanchor = "left", yanchor = "center", 
-                    x = 0.08, y = 0.9) 
+        legend=list(orientation="v", xanchor = "center", yanchor = "center", 
+                    x = 0.5, y = 0.9) 
         
         )    
 ```

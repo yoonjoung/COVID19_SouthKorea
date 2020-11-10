@@ -144,7 +144,8 @@ dta<-left_join(dtabyday, dtanewcasebyday, by = "date")%>%
     arrange(date)%>%
     mutate(positiverate=round(100*(newconfirmedcases/test), 1),
             positiveratesmooth =round(c(NA,NA,NA,rollmean(positiverate, 7),NA,NA,NA), 5), 
-            positiveratesmooth =ifelse(positiveratesmooth<0,  0, positiveratesmooth)
+            positiveratesmooth =ifelse(positiveratesmooth<0,  0, positiveratesmooth),
+            positiveratesmooth = round(positiveratesmooth, 1)
             )
 
 plot_ly(dta, x=~date, 
@@ -166,15 +167,15 @@ plot_ly(dta, x=~date,
         title = c("Trend of daily tests and new cases"),
         xaxis = list(title = "", tickfont = list(size=10), showgrid = FALSE), 
         yaxis = list(title = "Number of tests", 
-                     range=c(0, 20000),
+                     range=c(0, max(dta$test)),
                      side="left", showgrid = FALSE ),
         yaxis2 = list(title = "Positive rate (%)", 
-                      range=c(0, 20),
+                      range=c(0, max(dta$positiveratesmooth)),
                       overlaying='y',  
                       side="right", showgrid = FALSE),
         margin = list(b = 100, r=100), 
-        legend=list(orientation="v", xanchor = "left", yanchor = "center", 
-                    x = 0.05, y = 0.9) 
+        legend=list(orientation="v", xanchor = "center", yanchor = "center", 
+                    x = 0.5, y = 0.9) 
         
         )    
 ```
@@ -268,10 +269,11 @@ plot_ly(dtafig, x=~date, y=~incidence,
                   marker = list(color = "rgb(253,141,60)")) %>%
         layout(
             title = "Trends of cumulative incidence and case fatality rates by day",
-            yaxis = list(title="", range=c(0, 2.5)),  
+            yaxis = list(title="", range=c(0, 5)),  
             xaxis = list(  
                          tickfont = list(size=10)), 
-            legend = list(orientation = 'v',x = 0.05, y = 0.9) 
+            legend = list(orientation = 'v',xanchor = "left", yanchor = "center", 
+                          x = 0.03, y = 0.97) 
             )
 ```
 
@@ -374,7 +376,7 @@ panel <- . %>%
         title=c("Trend of incidence and case fatality rates by age group"),
         xaxis=list(title = "Date", tickfont = list(size=8)),
         yaxis = list(title = "Incidence rate (per 100,000 population)", 
-                     range=c(0, 30),
+                     range=c(0, 40),
                      side="left"),
         yaxis2=list(title = "Case fatality rate (%)", 
                     range=c(0, 30),
